@@ -4,7 +4,7 @@
 
 ## 技術スタック
 
-- **フレームワーク**: Next.js 14 (App Router)
+- **フレームワーク**: Next.js 16 (App Router)
 - **データベース**: Supabase (PostgreSQL + RLS)
 - **認証**: Supabase Auth
 - **課金**: Stripe
