@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Zap, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { Zap, Eye, EyeOff, Loader2 } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,7 +15,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,18 +25,14 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { error } = await authClient.signUp.email({
       email,
       password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      name: fullName,
     });
 
     if (error) {
-      if (error.message.includes("already registered")) {
+      if (error.message?.includes("already registered") || error.message?.includes("already exists")) {
         setError("このメールアドレスは既に登録されています");
       } else {
         setError("登録に失敗しました。しばらくしてから再度お試しください");
@@ -46,29 +41,9 @@ export default function RegisterPage() {
       return;
     }
 
-    setSuccess(true);
-    setLoading(false);
+    router.push("/dashboard");
+    router.refresh();
   };
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">確認メールを送信しました</h2>
-          <p className="text-gray-500 mb-6">
-            <strong>{email}</strong> に確認メールを送信しました。
-            メール内のリンクをクリックして登録を完了してください。
-          </p>
-          <p className="text-sm text-gray-400">
-            メールが届かない場合は迷惑メールフォルダをご確認ください
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">

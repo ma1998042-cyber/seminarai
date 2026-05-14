@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Zap, Eye, EyeOff, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 function LoginForm() {
   const router = useRouter();
@@ -22,8 +22,7 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await authClient.signIn.email({ email, password });
 
     if (error) {
       setError("メールアドレスまたはパスワードが間違っています");
