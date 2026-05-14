@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, CalendarDays, Users, ExternalLink } from "lucide-react";
+import { Plus, CalendarDays, Users, ExternalLink, Globe } from "lucide-react";
 import { formatDate, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LABELS, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
@@ -54,13 +54,24 @@ export default async function EventsPage({
           <h1 className="text-2xl font-bold text-gray-900">イベント管理</h1>
           <p className="text-sm text-gray-500 mt-1">セミナー・ウェビナーなどのイベントを管理します</p>
         </div>
-        <Link
-          href="/events/new"
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          イベントを作成
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/events/public"
+            target="_blank"
+            className="flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            公開ページ
+            <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+          </Link>
+          <Link
+            href="/events/new"
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            イベントを作成
+          </Link>
+        </div>
       </div>
 
       {/* Visibility tabs */}
