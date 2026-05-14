@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, LogOut, ChevronDown } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { getInitials } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 
 interface HeaderProps {
-  user: User;
+  user: { id: string; email: string; name?: string | null };
   profile: any;
   organization: any;
 }
@@ -18,8 +17,7 @@ export default function Header({ user, profile, organization }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await authClient.signOut();
     router.push("/auth/login");
     router.refresh();
   };

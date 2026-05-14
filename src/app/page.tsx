@@ -1,12 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { getAuth } from "@/lib/auth";
 import Link from "next/link";
 import { Zap, CalendarDays, Users, Mail, ClipboardList, ArrowRight, CheckCircle } from "lucide-react";
 
 export default async function RootPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user) redirect("/dashboard");
 
   return (
     <div className="min-h-screen bg-white">

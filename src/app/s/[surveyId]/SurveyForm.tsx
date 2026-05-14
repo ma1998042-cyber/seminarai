@@ -242,8 +242,8 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
                         <Star className={`w-9 h-9 transition-colors ${((answers[question.id] as number) || 0) >= rating ? "text-amber-400 fill-amber-400" : "text-gray-200"}`} />
                       </button>
                     ))}
-                    {answers[question.id] && (
-                      <span className="self-center ml-2 text-sm text-gray-400">{answers[question.id] as number} / 5</span>
+                    {answers[question.id] != null && (
+                      <span className="self-center ml-2 text-sm text-gray-400">{String(answers[question.id])} / 5</span>
                     )}
                   </div>
                 )}

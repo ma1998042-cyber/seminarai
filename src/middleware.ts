@@ -1,67 +1,33 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
+  // Better Auth のセッショントークンcookieでログイン判定
+  const sessionToken = request.cookies.get('better-auth.session_token')
+  const hasSession = !!sessionToken?.value
+
   // Public routes
-  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/verify', '/auth/callback', '/pricing', '/s/']
+  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/verify', '/auth/callback', '/pricing', '/s/', '/api/auth/']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
 
-  // Admin routes
-  const isAdminRoute = pathname.startsWith('/admin')
-
-  if (!user && !isPublicRoute) {
+  if (!hasSession && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
-  if (user && (pathname === '/auth/login' || pathname === '/auth/register')) {
+  if (hasSession && (pathname === '/auth/login' || pathname === '/auth/register')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Admin route protection
-  if (isAdminRoute && user) {
-    const { data: adminUser } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('id', user.id)
-      .single()
+  // Admin route protection はサーバーコンポーネント側で実装
+  // (middlewareではD1にアクセスできないため)
 
-    if (!adminUser) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
-    }
-  }
-
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {

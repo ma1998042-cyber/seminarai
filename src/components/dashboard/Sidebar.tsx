@@ -15,10 +15,9 @@ import {
   UserCircle,
 } from "lucide-react";
 import { cn, getInitials, PLAN_COLORS } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 
 interface SidebarProps {
-  user: User;
+  user: { id: string; email: string; name?: string | null };
   profile: any;
   organization: any;
   memberships: any[];
