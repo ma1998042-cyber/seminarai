@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Save, Building2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { slugify } from "@/lib/utils";
+import { getOrganizationData, saveOrganization } from "../actions";
 
 export default function OrganizationSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -20,22 +19,14 @@ export default function OrganizationSettingsPage() {
 
   useEffect(() => {
     const fetchOrg = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("current_organization_id")
-        .eq("id", user.id)
-        .single();
-      if (!profile?.current_organization_id) return;
-      setOrgId(profile.current_organization_id);
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("name, description, website")
-        .eq("id", profile.current_organization_id)
-        .single();
-      if (org) setForm({ name: org.name, description: org.description || "", website: org.website || "" });
+      const result = await getOrganizationData();
+      if ("error" in result) return;
+      setOrgId(result.orgId!);
+      setForm({
+        name: result.name!,
+        description: result.description!,
+        website: result.website!,
+      });
       setLoading(false);
     };
     fetchOrg();
@@ -47,18 +38,10 @@ export default function OrganizationSettingsPage() {
     setError("");
     setSuccess(false);
 
-    const supabase = createClient();
-    const { error: err } = await supabase
-      .from("organizations")
-      .update({
-        name: form.name,
-        description: form.description || null,
-        website: form.website || null,
-      })
-      .eq("id", orgId);
+    const result = await saveOrganization(orgId, form);
 
-    if (err) {
-      setError("保存に失敗しました");
+    if (result.error) {
+      setError(result.error);
     } else {
       setSuccess(true);
     }

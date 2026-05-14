@@ -1,4 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getOrganizationMembers } from "@/lib/db/queries/organizations";
+import { getInvitations } from "@/lib/db/queries/invitations";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, UserPlus, Crown, Settings, Edit, Eye, Users } from "lucide-react";
@@ -6,34 +11,36 @@ import { formatDate, ROLE_LABELS, getInitials } from "@/lib/utils";
 import InviteMemberForm from "./InviteMemberForm";
 
 export default async function MembersPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDbFromContext();
 
-  const orgId = profile?.current_organization_id;
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const { data: members } = await supabase
-    .from("organization_members")
-    .select("*, user_profiles(full_name, avatar_url)")
-    .eq("organization_id", orgId)
-    .eq("is_active", true)
-    .order("created_at");
+  const allMembers = await getOrganizationMembers(db, orgId);
+  const members = allMembers.filter((m) => m.isActive);
 
-  const { data: invitations } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("organization_id", orgId)
-    .is("accepted_at", null)
-    .gt("expires_at", new Date().toISOString());
+  // メンバーのユーザープロフィールを取得
+  const memberProfiles = await Promise.all(
+    members.map(async (m) => {
+      const p = await getUserProfile(db, m.userId);
+      return { memberId: m.id, fullName: p?.fullName, avatarUrl: p?.avatarUrl };
+    })
+  );
+  const profileMap = new Map(memberProfiles.map((p) => [p.memberId, p]));
 
-  const currentUserRole = members?.find((m) => m.user_id === user.id)?.role || "viewer";
+  const allInvitations = await getInvitations(db, orgId);
+  const now = new Date().toISOString();
+  const invitations = allInvitations.filter(
+    (inv) => !inv.acceptedAt && inv.expiresAt > now
+  );
+
+  const currentUserRole = members.find((m) => m.userId === user.id)?.role || "viewer";
   const canManage = ["owner", "admin"].includes(currentUserRole);
 
   const roleIcons: Record<string, React.ReactNode> = {
@@ -62,8 +69,9 @@ export default async function MembersPage() {
         </div>
         <div className="divide-y divide-gray-50">
           {members?.map((member) => {
-            const name = (member.user_profiles as any)?.full_name || "ユーザー";
-            const isCurrentUser = member.user_id === user.id;
+            const mp = profileMap.get(member.id);
+            const name = mp?.fullName || "ユーザー";
+            const isCurrentUser = member.userId === user.id;
             return (
               <div key={member.id} className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
@@ -77,7 +85,7 @@ export default async function MembersPage() {
                         <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">あなた</span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400">参加日：{formatDate(member.joined_at || member.created_at)}</p>
+                    <p className="text-xs text-gray-400">参加日：{formatDate(member.joinedAt || member.createdAt)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -103,7 +111,7 @@ export default async function MembersPage() {
                   <p className="text-sm font-medium text-gray-700">{inv.email}</p>
                   <p className="text-xs text-gray-400">
                     {ROLE_LABELS[inv.role]}として招待中・
-                    {formatDate(inv.expires_at)}まで有効
+                    {formatDate(inv.expiresAt)}まで有効
                   </p>
                 </div>
                 <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">保留中</span>

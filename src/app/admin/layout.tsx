@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { isAdminUser } from "@/lib/db/queries/admin";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Zap, Building2, BarChart3, CreditCard, Settings, Shield } from "lucide-react";
 
@@ -12,17 +15,14 @@ const adminNav = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const { data: adminUser } = await supabase
-    .from("admin_users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (!adminUser) redirect("/dashboard");
+  const db = getDbFromContext();
+  const isAdmin = await isAdminUser(db, user.id);
+  if (!isAdmin) redirect("/dashboard");
 
   return (
     <div className="flex h-screen bg-gray-900">

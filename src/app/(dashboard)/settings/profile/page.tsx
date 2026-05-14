@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Save, LogOut } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { getProfileData, saveProfile } from "../actions";
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
@@ -14,36 +15,26 @@ export default function ProfileSettingsPage() {
   const [fullName, setFullName] = useState("");
 
   useEffect(() => {
-    const fetch = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setEmail(user.email || "");
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
-      setFullName(profile?.full_name || "");
+    const fetchData = async () => {
+      const result = await getProfileData();
+      if ("error" in result) return;
+      setEmail(result.email!);
+      setFullName(result.fullName!);
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("user_profiles").update({ full_name: fullName }).eq("id", user.id);
+    await saveProfile(fullName);
     setSuccess(true);
     setSaving(false);
   };
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await authClient.signOut();
     router.push("/auth/login");
   };
 

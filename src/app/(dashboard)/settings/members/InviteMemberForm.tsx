@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { UserPlus, Loader2, Send } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { inviteMember } from "../actions";
 
 interface InviteMemberFormProps {
   orgId: string;
@@ -21,23 +21,10 @@ export default function InviteMemberForm({ orgId }: InviteMemberFormProps) {
     setError("");
     setSuccess(false);
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const result = await inviteMember(orgId, email, role);
 
-    const { error: err } = await supabase.from("invitations").insert({
-      organization_id: orgId,
-      email: email.trim().toLowerCase(),
-      role,
-      invited_by: user.id,
-    });
-
-    if (err) {
-      if (err.code === "23505") {
-        setError("このメールアドレスにはすでに招待を送信しています");
-      } else {
-        setError("招待の送信に失敗しました");
-      }
+    if (result.error) {
+      setError(result.error);
       setLoading(false);
       return;
     }

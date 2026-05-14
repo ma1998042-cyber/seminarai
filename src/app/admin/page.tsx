@@ -1,30 +1,32 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDbFromContext } from "@/lib/db";
+import { organizations, userProfiles, billingHistory } from "@/lib/db/schema";
+import { eq, sql, desc } from "drizzle-orm";
 import { Building2, Users, Mail, CreditCard, TrendingUp } from "lucide-react";
 import { formatNumber, formatPrice } from "@/lib/utils";
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  const db = getDbFromContext();
 
   const [
-    { count: orgCount },
-    { count: userCount },
-    { data: recentOrgs },
-    { data: revenueData },
+    [{ count: orgCount }],
+    [{ count: userCount }],
+    recentOrgs,
+    revenueData,
   ] = await Promise.all([
-    supabase.from("organizations").select("*", { count: "exact", head: true }),
-    supabase.from("user_profiles").select("*", { count: "exact", head: true }),
-    supabase
-      .from("organizations")
-      .select("id, name, slug, created_at, plans(name, display_name)")
-      .order("created_at", { ascending: false })
-      .limit(10),
-    supabase
-      .from("billing_history")
-      .select("amount")
-      .eq("status", "paid"),
+    db.select({ count: sql<number>`count(*)` }).from(organizations),
+    db.select({ count: sql<number>`count(*)` }).from(userProfiles),
+    db.query.organizations.findMany({
+      orderBy: [desc(organizations.createdAt)],
+      limit: 10,
+      with: { plan: true },
+    }),
+    db
+      .select({ amount: billingHistory.amount })
+      .from(billingHistory)
+      .where(eq(billingHistory.status, "paid")),
   ]);
 
-  const totalRevenue = revenueData?.reduce((sum, r) => sum + r.amount, 0) || 0;
+  const totalRevenue = revenueData.reduce((sum, r) => sum + r.amount, 0);
 
   const stats = [
     { label: "契約組織数", value: orgCount || 0, icon: Building2, color: "text-indigo-400", bg: "bg-indigo-900/50" },
@@ -62,7 +64,7 @@ export default async function AdminDashboardPage() {
           <h2 className="font-semibold text-white">最近登録した組織</h2>
         </div>
         <div className="divide-y divide-gray-700">
-          {recentOrgs?.map((org: any) => (
+          {recentOrgs?.map((org) => (
             <div key={org.id} className="flex items-center justify-between p-4">
               <div>
                 <p className="text-sm font-medium text-white">{org.name}</p>
@@ -70,10 +72,10 @@ export default async function AdminDashboardPage() {
               </div>
               <div className="text-right">
                 <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full">
-                  {org.plans?.display_name || "Free"}
+                  {org.plan?.displayName || "Free"}
                 </span>
                 <p className="text-xs text-gray-500 mt-1">
-                  {new Date(org.created_at).toLocaleDateString("ja-JP")}
+                  {new Date(org.createdAt).toLocaleDateString("ja-JP")}
                 </p>
               </div>
             </div>

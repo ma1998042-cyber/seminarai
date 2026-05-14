@@ -1,13 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDbFromContext } from "@/lib/db";
+import { organizations } from "@/lib/db/schema";
+import { desc } from "drizzle-orm";
 import { formatDate, formatNumber } from "@/lib/utils";
 
 export default async function AdminOrganizationsPage() {
-  const supabase = await createClient();
+  const db = getDbFromContext();
 
-  const { data: orgs } = await supabase
-    .from("organizations")
-    .select("*, plans(name, display_name)")
-    .order("created_at", { ascending: false });
+  const orgs = await db.query.organizations.findMany({
+    orderBy: [desc(organizations.createdAt)],
+    with: { plan: true },
+  });
 
   return (
     <div className="space-y-6">
@@ -27,7 +29,7 @@ export default async function AdminOrganizationsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {orgs?.map((org: any) => (
+            {orgs?.map((org) => (
               <tr key={org.id} className="hover:bg-gray-750">
                 <td className="px-5 py-3">
                   <p className="text-sm font-medium text-white">{org.name}</p>
@@ -35,16 +37,16 @@ export default async function AdminOrganizationsPage() {
                 </td>
                 <td className="px-5 py-3">
                   <span className="text-xs bg-indigo-900 text-indigo-300 px-2.5 py-1 rounded-full font-medium">
-                    {org.plans?.display_name || "Free"}
+                    {org.plan?.displayName || "Free"}
                   </span>
                 </td>
                 <td className="px-5 py-3">
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${org.is_active ? "bg-green-900 text-green-300" : "bg-red-900 text-red-300"}`}>
-                    {org.is_active ? "アクティブ" : "停止中"}
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${org.isActive ? "bg-green-900 text-green-300" : "bg-red-900 text-red-300"}`}>
+                    {org.isActive ? "アクティブ" : "停止中"}
                   </span>
                 </td>
                 <td className="px-5 py-3 text-xs text-gray-400">
-                  {formatDate(org.created_at)}
+                  {formatDate(org.createdAt)}
                 </td>
               </tr>
             ))}

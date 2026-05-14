@@ -1,50 +1,41 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getSubscription, getBillingHistory } from "@/lib/db/queries/billing";
+import { organizations as organizationsTable, plans } from "@/lib/db/schema";
+import { eq, asc } from "drizzle-orm";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CreditCard, CheckCircle, ArrowRight, Zap } from "lucide-react";
 import { formatDate, formatPrice, PLAN_COLORS, cn } from "@/lib/utils";
 
 export default async function BillingPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDbFromContext();
 
-  const orgId = profile?.current_organization_id;
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("*, plans(*)")
-    .eq("id", orgId)
-    .single();
+  const [org, subscription, billingHistoryData, allPlans] = await Promise.all([
+    db.query.organizations.findFirst({
+      where: eq(organizationsTable.id, orgId),
+      with: { plan: true },
+    }),
+    getSubscription(db, orgId),
+    getBillingHistory(db, orgId),
+    db.query.plans.findMany({
+      where: eq(plans.isActive, true),
+      orderBy: [asc(plans.sortOrder)],
+    }),
+  ]);
 
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("organization_id", orgId)
-    .eq("status", "active")
-    .single();
-
-  const { data: billingHistory } = await supabase
-    .from("billing_history")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const { data: allPlans } = await supabase
-    .from("plans")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order");
-
-  const currentPlan = (org as any)?.plans;
+  const currentPlan = org?.plan;
   const planName = currentPlan?.name || "free";
 
   return (
@@ -64,19 +55,19 @@ export default async function BillingPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-gray-900">{currentPlan?.display_name || "Free"}</h3>
+                <h3 className="text-xl font-bold text-gray-900">{currentPlan?.displayName || "Free"}</h3>
                 <span className={cn("text-xs px-2 py-1 rounded-full font-medium", PLAN_COLORS[planName])}>
                   {planName === "free" ? "無料プラン" : "有料プラン"}
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-1">
                 {planName !== "free"
-                  ? `${formatPrice(currentPlan?.price_monthly || 0)}/月`
+                  ? `${formatPrice(currentPlan?.priceMonthly || 0)}/月`
                   : "無料でご利用中"}
               </p>
-              {subscription?.current_period_end && (
+              {subscription?.currentPeriodEnd && (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  次回更新：{formatDate(subscription.current_period_end)}
+                  次回更新：{formatDate(subscription.currentPeriodEnd)}
                 </p>
               )}
             </div>
@@ -96,10 +87,10 @@ export default async function BillingPage() {
         {currentPlan && (
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "イベント", value: currentPlan.max_events === -1 ? "無制限" : `${currentPlan.max_events}件` },
-              { label: "顧客", value: currentPlan.max_customers === -1 ? "無制限" : `${currentPlan.max_customers.toLocaleString()}件` },
-              { label: "月間メール", value: currentPlan.max_monthly_emails === -1 ? "無制限" : `${currentPlan.max_monthly_emails.toLocaleString()}通` },
-              { label: "メンバー", value: currentPlan.max_members === -1 ? "無制限" : `${currentPlan.max_members}名` },
+              { label: "イベント", value: currentPlan.maxEvents === -1 ? "無制限" : `${currentPlan.maxEvents}件` },
+              { label: "顧客", value: currentPlan.maxCustomers === -1 ? "無制限" : `${currentPlan.maxCustomers.toLocaleString()}件` },
+              { label: "月間メール", value: currentPlan.maxMonthlyEmails === -1 ? "無制限" : `${currentPlan.maxMonthlyEmails.toLocaleString()}通` },
+              { label: "メンバー", value: currentPlan.maxMembers === -1 ? "無制限" : `${currentPlan.maxMembers}名` },
             ].map((item) => (
               <div key={item.label} className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-1">{item.label}</p>
@@ -126,13 +117,13 @@ export default async function BillingPage() {
               >
                 <div className="mb-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-gray-900">{plan.display_name}</h3>
+                    <h3 className="font-bold text-gray-900">{plan.displayName}</h3>
                     {isCurrentPlan && (
                       <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">現在</span>
                     )}
                   </div>
                   <p className="text-lg font-bold text-gray-900">
-                    {plan.price_monthly === 0 ? "無料" : `¥${plan.price_monthly.toLocaleString()}/月`}
+                    {plan.priceMonthly === 0 ? "無料" : `¥${plan.priceMonthly.toLocaleString()}/月`}
                   </p>
                 </div>
                 <ul className="space-y-1.5">
@@ -155,18 +146,18 @@ export default async function BillingPage() {
       </div>
 
       {/* Billing history */}
-      {billingHistory && billingHistory.length > 0 && (
+      {billingHistoryData && billingHistoryData.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100">
           <div className="flex items-center gap-2 p-5 border-b border-gray-50">
             <CreditCard className="w-4 h-4 text-gray-400" />
             <h2 className="font-semibold text-gray-900">請求履歴</h2>
           </div>
           <div className="divide-y divide-gray-50">
-            {billingHistory.map((invoice) => (
+            {billingHistoryData.map((invoice) => (
               <div key={invoice.id} className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-sm font-medium text-gray-700">{invoice.description || "サブスクリプション"}</p>
-                  <p className="text-xs text-gray-400">{formatDate(invoice.created_at)}</p>
+                  <p className="text-xs text-gray-400">{formatDate(invoice.createdAt)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold text-gray-900">{formatPrice(invoice.amount)}</p>
