@@ -40,16 +40,16 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
             if (images.length === 0) return null;
             if (images.length === 1) {
               return (
-                <div className="w-full aspect-video bg-gray-100">
-                  <img src={images[0]} alt={event.title} className="w-full h-full object-contain" />
+                <div className="w-full bg-gray-100 flex justify-center">
+                  <img src={images[0]} alt={event.title} className="w-full h-auto max-h-[80vh]" style={{ objectFit: "contain" }} />
                 </div>
               );
             }
             return (
-              <div className="grid grid-cols-3 gap-1">
+              <div className="space-y-1">
                 {images.map((url, i) => (
-                  <div key={i} className={`bg-gray-100 ${i === 0 ? "col-span-3 aspect-video" : "aspect-video"}`}>
-                    <img src={url} alt={`${event.title} ${i + 1}`} className="w-full h-full object-contain" />
+                  <div key={i} className="w-full bg-gray-100 flex justify-center">
+                    <img src={url} alt={`${event.title} ${i + 1}`} className="w-full h-auto max-h-[80vh]" style={{ objectFit: "contain" }} />
                   </div>
                 ))}
               </div>
