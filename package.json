@@ -5,12 +5,20 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply seminar-crm-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply seminar-crm-db --remote",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
     "@hookform/resolvers": "^3.3.4",
+    "@opennextjs/cloudflare": "^1.19.9",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.0.4",
@@ -32,10 +40,12 @@
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.43.4",
     "autoprefixer": "^10.5.0",
+    "better-auth": "^1.6.11",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.378.0",
     "next": "^16.2.6",
     "react": "^18",
@@ -51,10 +61,12 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.90.1"
   }
 }

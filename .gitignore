@@ -39,3 +39,7 @@ yarn-error.log*
 # supabase
 supabase/.branches
 supabase/.temp
+
+# cloudflare
+.wrangler/
+.open-next/
