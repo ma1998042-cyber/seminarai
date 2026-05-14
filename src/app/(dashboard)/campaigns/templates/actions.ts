@@ -1,18 +1,8 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-
-async function getUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
-
-async function getOrgId(userId: string) {
-  const admin = await createAdminClient()
-  const { data } = await admin.from('user_profiles').select('current_organization_id').eq('id', userId).single()
-  return data?.current_organization_id ?? null
-}
+import { getDb, emailTemplates } from '@/lib/db'
+import { getCurrentUser, getCurrentOrgId } from '@/lib/session'
+import { eq, and } from 'drizzle-orm'
 
 export async function saveTemplate(data: {
   id?: string
@@ -21,44 +11,50 @@ export async function saveTemplate(data: {
   preview_text?: string
   body_html: string
 }) {
-  const user = await getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
-  const orgId = await getOrgId(user.id)
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
+  const db = getDb()
 
   if (data.id) {
-    const { error } = await admin.from('email_templates').update({
-      name: data.name,
-      subject: data.subject,
-      preview_text: data.preview_text || null,
-      body_html: data.body_html,
-    }).eq('id', data.id).eq('organization_id', orgId)
-    if (error) return { error: error.message }
+    await db
+      .update(emailTemplates)
+      .set({
+        name: data.name,
+        subject: data.subject,
+        previewText: data.preview_text || null,
+        bodyHtml: data.body_html,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(and(eq(emailTemplates.id, data.id), eq(emailTemplates.organizationId, orgId)))
     return { id: data.id }
-  } else {
-    const { data: tmpl, error } = await admin.from('email_templates').insert({
-      organization_id: orgId,
+  }
+
+  const tmpl = await db
+    .insert(emailTemplates)
+    .values({
+      organizationId: orgId,
       name: data.name,
       subject: data.subject,
-      preview_text: data.preview_text || null,
-      body_html: data.body_html,
-      created_by: user.id,
-    }).select('id').single()
-    if (error || !tmpl) return { error: error?.message ?? '作成に失敗しました' }
-    return { id: tmpl.id }
-  }
+      previewText: data.preview_text || null,
+      bodyHtml: data.body_html,
+      createdBy: user.id,
+    })
+    .returning()
+    .get()
+
+  return { id: tmpl.id }
 }
 
 export async function deleteTemplate(id: string) {
-  const user = await getUser()
-  if (!user) return { error: 'ログインが必要です' }
-  const orgId = await getOrgId(user.id)
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin.from('email_templates').delete().eq('id', id).eq('organization_id', orgId)
-  if (error) return { error: error.message }
+  const db = getDb()
+  await db
+    .delete(emailTemplates)
+    .where(and(eq(emailTemplates.id, id), eq(emailTemplates.organizationId, orgId)))
   return {}
 }

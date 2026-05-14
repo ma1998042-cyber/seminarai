@@ -1,7 +1,9 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getDb, surveys, surveyQuestions } from '@/lib/db'
+import { getCurrentUser } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
+import { eq } from 'drizzle-orm'
 
 type Question = {
   question_type: string
@@ -21,40 +23,39 @@ export async function updateSurvey(surveyId: string, data: {
   payment_enabled?: boolean
   payment_amount?: number
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
+  const db = getDb()
 
-  const { error: surveyErr } = await admin.from('surveys').update({
-    title: data.title,
-    description: data.description || null,
-    thank_you_message: data.thank_you_message || null,
-    status: data.status,
-    published_at: data.status === 'active' ? new Date().toISOString() : undefined,
-    payment_enabled: data.payment_enabled ?? false,
-    payment_amount: data.payment_amount ?? 0,
-  }).eq('id', surveyId)
+  await db
+    .update(surveys)
+    .set({
+      title: data.title,
+      description: data.description || null,
+      thankYouMessage: data.thank_you_message || null,
+      status: data.status,
+      publishedAt: data.status === 'active' ? new Date().toISOString() : undefined,
+      paymentEnabled: data.payment_enabled ?? false,
+      paymentAmount: data.payment_amount ?? 0,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(surveys.id, surveyId))
 
-  if (surveyErr) return { error: surveyErr.message }
-
-  // 既存の設問を削除して再挿入
-  await admin.from('survey_questions').delete().eq('survey_id', surveyId)
+  await db.delete(surveyQuestions).where(eq(surveyQuestions.surveyId, surveyId))
 
   if (data.questions.length > 0) {
-    const { error: qErr } = await admin.from('survey_questions').insert(
+    await db.insert(surveyQuestions).values(
       data.questions.map((q, i) => ({
-        survey_id: surveyId,
-        sort_order: i,
-        question_type: q.question_type,
+        surveyId,
+        sortOrder: i,
+        questionType: q.question_type,
         title: q.title,
         description: q.description || null,
-        is_required: q.is_required,
-        options: q.options.length > 0 ? q.options : null,
+        isRequired: q.is_required,
+        options: q.options.length > 0 ? JSON.stringify(q.options) : null,
       }))
     )
-    if (qErr) return { error: qErr.message }
   }
 
   revalidatePath(`/surveys/${surveyId}`)

@@ -1,44 +1,46 @@
-"use client";
+"use client"
 
-import { useState, Suspense } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Zap, Eye, EyeOff, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, Suspense } from "react"
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Zap, Eye, EyeOff, Loader2 } from "lucide-react"
+import { signIn } from "next-auth/react"
 
 function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/events";
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get("next") || "/events"
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    e.preventDefault()
+    setLoading(true)
+    setError("")
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    })
 
-    if (error) {
-      setError("メールアドレスまたはパスワードが間違っています");
-      setLoading(false);
-      return;
+    if (result?.error) {
+      setError("メールアドレスまたはパスワードが間違っています")
+      setLoading(false)
+      return
     }
 
-    router.push(next);
-    router.refresh();
-  };
+    router.push(next)
+    router.refresh()
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
@@ -112,7 +114,7 @@ function LoginForm() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default function LoginPage() {
@@ -120,5 +122,5 @@ export default function LoginPage() {
     <Suspense fallback={null}>
       <LoginForm />
     </Suspense>
-  );
+  )
 }

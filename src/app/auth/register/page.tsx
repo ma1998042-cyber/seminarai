@@ -1,79 +1,46 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Zap, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Zap, Eye, EyeOff, Loader2 } from "lucide-react"
+import { registerUser } from "./actions"
+import { signIn } from "next-auth/react"
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const router = useRouter()
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (password.length < 8) {
-      setError("パスワードは8文字以上にしてください");
-      return;
+      setError("パスワードは8文字以上にしてください")
+      return
     }
-    setLoading(true);
-    setError("");
+    setLoading(true)
+    setError("")
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      if (error.message.includes("already registered")) {
-        setError("このメールアドレスは既に登録されています");
-      } else {
-        setError("登録に失敗しました。しばらくしてから再度お試しください");
-      }
-      setLoading(false);
-      return;
+    const result = await registerUser({ email, password, fullName })
+    if (result.error) {
+      setError(result.error)
+      setLoading(false)
+      return
     }
 
-    setSuccess(true);
-    setLoading(false);
-  };
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">確認メールを送信しました</h2>
-          <p className="text-gray-500 mb-6">
-            <strong>{email}</strong> に確認メールを送信しました。
-            メール内のリンクをクリックして登録を完了してください。
-          </p>
-          <p className="text-sm text-gray-400">
-            メールが届かない場合は迷惑メールフォルダをご確認ください
-          </p>
-        </div>
-      </div>
-    );
+    await signIn("credentials", { email, password, redirect: false })
+    router.push("/onboarding")
+    router.refresh()
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
@@ -99,9 +66,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleRegister} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                お名前
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">お名前</label>
               <input
                 type="text"
                 value={fullName}
@@ -113,9 +78,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                メールアドレス
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">メールアドレス</label>
               <input
                 type="email"
                 value={email}
@@ -127,9 +90,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                パスワード
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">パスワード</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -166,5 +127,5 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
