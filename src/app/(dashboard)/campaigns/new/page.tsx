@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Mail, Users, Tag } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { getTagsForOrg, createCampaignAction } from "./actions";
 
 export default function NewCampaignPage() {
   const router = useRouter();
@@ -25,21 +25,8 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     const fetchTags = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("current_organization_id")
-        .eq("id", user.id)
-        .single() as any;
-      if (!profile?.current_organization_id) return;
-      const { data } = await supabase
-        .from("tags")
-        .select("*")
-        .eq("organization_id", profile.current_organization_id)
-        .order("name");
-      setTags(data || []);
+      const data = await getTagsForOrg();
+      setTags(data);
     };
     fetchTags();
   }, []);
@@ -61,46 +48,17 @@ export default function NewCampaignPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/auth/login"); return; }
+    const result = await createCampaignAction({ ...form, status });
 
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("current_organization_id")
-      .eq("id", user.id)
-      .single() as any;
-
-    if (!profile?.current_organization_id) {
-      setError("組織が見つかりません");
+    if (result.error) {
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    const { data: campaign, error: err } = await supabase
-      .from("email_campaigns")
-      .insert({
-        organization_id: profile.current_organization_id,
-        title: form.title,
-        subject: form.subject,
-        preview_text: form.preview_text || null,
-        body_html: form.body_html,
-        target_type: form.target_type,
-        target_tag_ids: form.target_tag_ids.length > 0 ? form.target_tag_ids : null,
-        status,
-        scheduled_at: form.scheduled_at || null,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (err || !campaign) {
-      setError("メルマガの作成に失敗しました");
-      setLoading(false);
-      return;
+    if (result.campaignId) {
+      router.push(`/campaigns/${result.campaignId}`);
     }
-
-    router.push(`/campaigns/${campaign.id}`);
   };
 
   return (

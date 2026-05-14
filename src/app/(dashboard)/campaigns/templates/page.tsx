@@ -1,25 +1,30 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, FileText, Pencil, Trash2 } from "lucide-react";
+import { Plus, FileText, Pencil } from "lucide-react";
 import CampaignNav from "@/components/campaigns/CampaignNav";
 import { formatDate } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { eq } from "drizzle-orm";
+import { emailTemplates } from "@/lib/db/schema";
 
 export default async function TemplatesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin.from("user_profiles").select("current_organization_id").eq("id", user.id).single();
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const { data: templates } = await admin
-    .from("email_templates")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const templates = await db.query.emailTemplates.findMany({
+    where: eq(emailTemplates.organizationId, orgId),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+  });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -48,7 +53,7 @@ export default async function TemplatesPage() {
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 truncate">{tmpl.name}</h3>
                 <p className="text-xs text-gray-500 truncate mt-0.5">{tmpl.subject}</p>
-                <p className="text-xs text-gray-400 mt-1">{formatDate(tmpl.created_at)}</p>
+                <p className="text-xs text-gray-400 mt-1">{formatDate(tmpl.createdAt)}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Link

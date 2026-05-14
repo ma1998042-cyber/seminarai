@@ -1,17 +1,22 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+import { eq, and } from 'drizzle-orm'
+import { getAuth } from '@/lib/auth'
+import { getDbFromContext } from '@/lib/db'
+import { getUserProfile } from '@/lib/db/queries/users'
+import { emailTemplates } from '@/lib/db/schema'
 
-async function getUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+async function getAuthUser() {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  return session?.user ?? null
 }
 
 async function getOrgId(userId: string) {
-  const admin = await createAdminClient()
-  const { data } = await admin.from('user_profiles').select('current_organization_id').eq('id', userId).single()
-  return data?.current_organization_id ?? null
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, userId)
+  return profile?.currentOrganizationId ?? null
 }
 
 export async function saveTemplate(data: {
@@ -21,44 +26,44 @@ export async function saveTemplate(data: {
   preview_text?: string
   body_html: string
 }) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
   const orgId = await getOrgId(user.id)
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
 
   if (data.id) {
-    const { error } = await admin.from('email_templates').update({
+    const [updated] = await db.update(emailTemplates).set({
       name: data.name,
       subject: data.subject,
-      preview_text: data.preview_text || null,
-      body_html: data.body_html,
-    }).eq('id', data.id).eq('organization_id', orgId)
-    if (error) return { error: error.message }
+      previewText: data.preview_text || null,
+      bodyHtml: data.body_html,
+      updatedAt: new Date().toISOString(),
+    }).where(and(eq(emailTemplates.id, data.id), eq(emailTemplates.organizationId, orgId))).returning()
+    if (!updated) return { error: '更新に失敗しました' }
     return { id: data.id }
   } else {
-    const { data: tmpl, error } = await admin.from('email_templates').insert({
-      organization_id: orgId,
+    const [tmpl] = await db.insert(emailTemplates).values({
+      organizationId: orgId,
       name: data.name,
       subject: data.subject,
-      preview_text: data.preview_text || null,
-      body_html: data.body_html,
-      created_by: user.id,
-    }).select('id').single()
-    if (error || !tmpl) return { error: error?.message ?? '作成に失敗しました' }
+      previewText: data.preview_text || null,
+      bodyHtml: data.body_html,
+      createdBy: user.id,
+    }).returning()
+    if (!tmpl) return { error: '作成に失敗しました' }
     return { id: tmpl.id }
   }
 }
 
 export async function deleteTemplate(id: string) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
   const orgId = await getOrgId(user.id)
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin.from('email_templates').delete().eq('id', id).eq('organization_id', orgId)
-  if (error) return { error: error.message }
+  const db = getDbFromContext()
+  await db.delete(emailTemplates).where(and(eq(emailTemplates.id, id), eq(emailTemplates.organizationId, orgId)))
   return {}
 }
