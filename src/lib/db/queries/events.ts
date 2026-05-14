@@ -1,4 +1,4 @@
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray, gte, asc } from "drizzle-orm";
 import { events, eventRegistrations, customers } from "../schema";
 import type { Database } from "..";
 
@@ -81,6 +81,18 @@ export async function updateEvent(
 // =============================================
 // 公開ページ用クエリ
 // =============================================
+
+export async function getPublicEvents(db: Database) {
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  return db.query.events.findMany({
+    where: and(
+      eq(events.visibility, "public"),
+      eq(events.status, "active"),
+      gte(events.startDate, today),
+    ),
+    orderBy: [asc(events.startDate)],
+  });
+}
 
 export async function getPublicEvent(db: Database, eventId: string) {
   return db.query.events.findFirst({

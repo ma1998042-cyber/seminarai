@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   const hasSession = !!sessionToken?.value
 
   // Public routes
-  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/verify', '/auth/callback', '/pricing', '/s/', '/e/', '/api/auth/']
+  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/verify', '/auth/callback', '/pricing', '/s/', '/e/', '/events/public', '/api/auth/']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
 
   if (!hasSession && !isPublicRoute) {
