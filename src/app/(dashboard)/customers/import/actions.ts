@@ -1,6 +1,8 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getDb, customers, events, eventRegistrations } from '@/lib/db'
+import { getCurrentUser, getCurrentOrgId } from '@/lib/session'
+import { eq, and } from 'drizzle-orm'
 
 type CustomerRow = {
   email: string
@@ -19,63 +21,53 @@ type ImportOptions = {
 }
 
 export async function getOrgAndEvents() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('current_organization_id')
-    .eq('id', user.id)
-    .single()
-
-  const orgId = profile?.current_organization_id
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const { data: events } = await supabase
-    .from('events')
-    .select('id, title, event_type, start_date, status')
-    .eq('organization_id', orgId)
-    .order('created_at', { ascending: false })
+  const db = getDb()
+  const eventRows = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      eventType: events.eventType,
+      startDate: events.startDate,
+      status: events.status,
+    })
+    .from(events)
+    .where(eq(events.organizationId, orgId))
+    .orderBy(events.createdAt)
 
-  return { orgId, events: events ?? [] }
+  return { orgId, events: eventRows }
 }
 
 export async function importCustomers(options: ImportOptions) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('current_organization_id')
-    .eq('id', user.id)
-    .single()
-
-  const orgId = profile?.current_organization_id
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
+  const db = getDb()
 
   let targetEventId: string | null = null
 
-  // イベント作成
   if (options.eventMode === 'new' && options.newEventTitle) {
-    const { data: newEvent, error: eventErr } = await admin
-      .from('events')
-      .insert({
-        organization_id: orgId,
+    const newEvent = await db
+      .insert(events)
+      .values({
+        organizationId: orgId,
         title: options.newEventTitle,
-        event_type: options.newEventType ?? 'seminar',
+        eventType: options.newEventType ?? 'seminar',
         status: 'active',
-        created_by: user.id,
+        createdBy: user.id,
       })
-      .select('id')
-      .single()
+      .returning()
+      .get()
 
-    if (eventErr || !newEvent) {
-      return { error: `イベントの作成に失敗しました: ${eventErr?.message}` }
-    }
+    if (!newEvent) return { error: 'イベントの作成に失敗しました' }
     targetEventId = newEvent.id
   } else if (options.eventMode === 'existing' && options.eventId) {
     targetEventId = options.eventId
@@ -87,39 +79,47 @@ export async function importCustomers(options: ImportOptions) {
   for (const row of options.customers) {
     if (!row.email?.trim()) { skipped++; continue }
 
-    const { data: customer, error: custErr } = await admin
-      .from('customers')
-      .upsert(
-        {
-          organization_id: orgId,
-          email: row.email.trim().toLowerCase(),
-          full_name: row.full_name?.trim() || null,
+    const email = row.email.trim().toLowerCase()
+
+    const customer = await db
+      .insert(customers)
+      .values({
+        organizationId: orgId,
+        email,
+        fullName: row.full_name?.trim() || null,
+        phone: row.phone?.trim() || null,
+        company: row.company?.trim() || null,
+        jobTitle: row.job_title?.trim() || null,
+        source: 'import',
+        sourceEventId: targetEventId,
+      })
+      .onConflictDoUpdate({
+        target: [customers.organizationId, customers.email],
+        set: {
+          fullName: row.full_name?.trim() || null,
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,
-          job_title: row.job_title?.trim() || null,
-          source: 'import',
-          source_event_id: targetEventId,
+          jobTitle: row.job_title?.trim() || null,
+          updatedAt: new Date().toISOString(),
         },
-        { onConflict: 'organization_id,email', ignoreDuplicates: false }
-      )
-      .select('id')
-      .single()
+      })
+      .returning()
+      .get()
 
-    if (custErr || !customer) { skipped++; continue }
+    if (!customer) { skipped++; continue }
 
-    // イベント参加者として登録
     if (targetEventId) {
-      await admin.from('event_registrations').upsert(
-        {
-          event_id: targetEventId,
-          customer_id: customer.id,
-          organization_id: orgId,
-          email: row.email.trim().toLowerCase(),
-          full_name: row.full_name?.trim() || null,
+      await db
+        .insert(eventRegistrations)
+        .values({
+          eventId: targetEventId,
+          customerId: customer.id,
+          organizationId: orgId,
+          email,
+          fullName: row.full_name?.trim() || null,
           status: 'registered',
-        },
-        { onConflict: 'event_id,email', ignoreDuplicates: true }
-      )
+        })
+        .onConflictDoNothing()
     }
 
     imported++

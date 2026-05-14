@@ -1,7 +1,8 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import CreateOrgCard from "./CreateOrgCard";
+import { auth } from '@/lib/auth'
+import { getDb, userProfiles, events, customers, surveys, emailCampaigns } from '@/lib/db'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import CreateOrgCard from './CreateOrgCard'
 import {
   CalendarDays,
   Users,
@@ -10,70 +11,72 @@ import {
   TrendingUp,
   ArrowRight,
   Plus,
-} from "lucide-react";
-import { formatNumber } from "@/lib/utils";
+} from 'lucide-react'
+import { formatNumber } from '@/lib/utils'
+import { eq, count, desc } from 'drizzle-orm'
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const session = await auth()
+  if (!session?.user) redirect('/auth/login')
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDb()
+  const profile = await db
+    .select({ currentOrganizationId: userProfiles.currentOrganizationId })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, session.user.id))
+    .get()
 
-  const orgId = profile?.current_organization_id;
-  if (!orgId) return <CreateOrgCard />;
+  const orgId = profile?.currentOrganizationId
+  if (!orgId) return <CreateOrgCard />
 
-  // Fetch stats
-  const [
-    { count: eventsCount },
-    { count: customersCount },
-    { count: surveysCount },
-    { count: campaignsCount },
-  ] = await Promise.all([
-    supabase.from("events").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-    supabase.from("surveys").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-    supabase.from("email_campaigns").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-  ]);
+  const [eventsCount, customersCount, surveysCount, campaignsCount] = await Promise.all([
+    db.select({ count: count() }).from(events).where(eq(events.organizationId, orgId)).get(),
+    db.select({ count: count() }).from(customers).where(eq(customers.organizationId, orgId)).get(),
+    db.select({ count: count() }).from(surveys).where(eq(surveys.organizationId, orgId)).get(),
+    db.select({ count: count() }).from(emailCampaigns).where(eq(emailCampaigns.organizationId, orgId)).get(),
+  ])
 
-  // Recent events
-  const { data: recentEvents } = await supabase
-    .from("events")
-    .select("id, title, status, start_date, registration_count")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const recentEvents = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      status: events.status,
+      startDate: events.startDate,
+      registrationCount: events.registrationCount,
+    })
+    .from(events)
+    .where(eq(events.organizationId, orgId))
+    .orderBy(desc(events.createdAt))
+    .limit(5)
 
-  // Recent customers
-  const { data: recentCustomers } = await supabase
-    .from("customers")
-    .select("id, full_name, email, created_at")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const recentCustomers = await db
+    .select({
+      id: customers.id,
+      fullName: customers.fullName,
+      email: customers.email,
+      createdAt: customers.createdAt,
+    })
+    .from(customers)
+    .where(eq(customers.organizationId, orgId))
+    .orderBy(desc(customers.createdAt))
+    .limit(5)
 
   const stats = [
-    { label: "イベント", value: eventsCount || 0, icon: CalendarDays, color: "text-indigo-600", bg: "bg-indigo-50", href: "/events" },
-    { label: "顧客", value: customersCount || 0, icon: Users, color: "text-blue-600", bg: "bg-blue-50", href: "/customers" },
-    { label: "アンケート", value: surveysCount || 0, icon: ClipboardList, color: "text-green-600", bg: "bg-green-50", href: "/surveys" },
-    { label: "メルマガ", value: campaignsCount || 0, icon: Mail, color: "text-purple-600", bg: "bg-purple-50", href: "/campaigns" },
-  ];
+    { label: 'イベント', value: eventsCount?.count ?? 0, icon: CalendarDays, color: 'text-indigo-600', bg: 'bg-indigo-50', href: '/events' },
+    { label: '顧客', value: customersCount?.count ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', href: '/customers' },
+    { label: 'アンケート', value: surveysCount?.count ?? 0, icon: ClipboardList, color: 'text-green-600', bg: 'bg-green-50', href: '/surveys' },
+    { label: 'メルマガ', value: campaignsCount?.count ?? 0, icon: Mail, color: 'text-purple-600', bg: 'bg-purple-50', href: '/campaigns' },
+  ]
 
   const statusLabels: Record<string, { label: string; className: string }> = {
-    draft: { label: "下書き", className: "bg-gray-100 text-gray-600" },
-    active: { label: "公開中", className: "bg-green-100 text-green-700" },
-    closed: { label: "終了", className: "bg-gray-100 text-gray-500" },
-    archived: { label: "アーカイブ", className: "bg-amber-100 text-amber-700" },
-  };
+    draft: { label: '下書き', className: 'bg-gray-100 text-gray-600' },
+    active: { label: '公開中', className: 'bg-green-100 text-green-700' },
+    closed: { label: '終了', className: 'bg-gray-100 text-gray-500' },
+    archived: { label: 'アーカイブ', className: 'bg-amber-100 text-amber-700' },
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <Link
@@ -93,7 +96,6 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Quick actions */}
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -103,110 +105,74 @@ export default async function DashboardPage() {
           <TrendingUp className="w-8 h-8 text-indigo-300" />
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link
-            href="/events/new"
-            className="bg-white text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            イベントを作成
+          <Link href="/events/new" className="bg-white text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition-colors flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />イベントを作成
           </Link>
-          <Link
-            href="/surveys/new"
-            className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-400 transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            アンケートを作成
+          <Link href="/surveys/new" className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-400 transition-colors flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />アンケートを作成
           </Link>
-          <Link
-            href="/campaigns/new"
-            className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-400 transition-colors flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            メルマガを作成
+          <Link href="/campaigns/new" className="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-400 transition-colors flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />メルマガを作成
           </Link>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent events */}
         <div className="bg-white rounded-2xl border border-gray-100">
           <div className="flex items-center justify-between p-5 border-b border-gray-50">
             <h2 className="font-semibold text-gray-900">最近のイベント</h2>
             <Link href="/events" className="text-sm text-indigo-600 hover:underline">すべて見る</Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {recentEvents && recentEvents.length > 0 ? (
-              recentEvents.map((event) => {
-                const s = statusLabels[event.status] || statusLabels.draft;
-                return (
-                  <Link
-                    key={event.id}
-                    href={`/events/${event.id}`}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{event.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        参加者 {event.registration_count}名
-                      </p>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${s.className}`}>
-                      {s.label}
-                    </span>
-                  </Link>
-                );
-              })
-            ) : (
+            {recentEvents.length > 0 ? recentEvents.map((event) => {
+              const s = statusLabels[event.status] || statusLabels.draft
+              return (
+                <Link key={event.id} href={`/events/${event.id}`} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{event.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">参加者 {event.registrationCount}名</p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${s.className}`}>{s.label}</span>
+                </Link>
+              )
+            }) : (
               <div className="p-8 text-center">
                 <CalendarDays className="w-8 h-8 text-gray-200 mx-auto mb-2" />
                 <p className="text-sm text-gray-400">イベントがまだありません</p>
-                <Link href="/events/new" className="text-sm text-indigo-600 hover:underline mt-1 block">
-                  最初のイベントを作成する
-                </Link>
+                <Link href="/events/new" className="text-sm text-indigo-600 hover:underline mt-1 block">最初のイベントを作成する</Link>
               </div>
             )}
           </div>
         </div>
 
-        {/* Recent customers */}
         <div className="bg-white rounded-2xl border border-gray-100">
           <div className="flex items-center justify-between p-5 border-b border-gray-50">
             <h2 className="font-semibold text-gray-900">最近の顧客</h2>
             <Link href="/customers" className="text-sm text-indigo-600 hover:underline">すべて見る</Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {recentCustomers && recentCustomers.length > 0 ? (
-              recentCustomers.map((customer) => (
-                <Link
-                  key={customer.id}
-                  href={`/customers/${customer.id}`}
-                  className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-gray-600">
-                      {(customer.full_name || customer.email || "U").charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {customer.full_name || "名前なし"}
-                    </p>
-                    <p className="text-xs text-gray-400">{customer.email}</p>
-                  </div>
-                </Link>
-              ))
-            ) : (
+            {recentCustomers.length > 0 ? recentCustomers.map((customer) => (
+              <Link key={customer.id} href={`/customers/${customer.id}`} className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
+                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-semibold text-gray-600">
+                    {(customer.fullName || customer.email || 'U').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{customer.fullName || '名前なし'}</p>
+                  <p className="text-xs text-gray-400">{customer.email}</p>
+                </div>
+              </Link>
+            )) : (
               <div className="p-8 text-center">
                 <Users className="w-8 h-8 text-gray-200 mx-auto mb-2" />
                 <p className="text-sm text-gray-400">顧客がまだいません</p>
-                <Link href="/customers" className="text-sm text-indigo-600 hover:underline mt-1 block">
-                  顧客を追加する
-                </Link>
+                <Link href="/customers" className="text-sm text-indigo-600 hover:underline mt-1 block">顧客を追加する</Link>
               </div>
             )}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

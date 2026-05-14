@@ -1,18 +1,8 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-
-async function getUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
-
-async function getOrgId(userId: string) {
-  const admin = await createAdminClient()
-  const { data } = await admin.from('user_profiles').select('current_organization_id').eq('id', userId).single()
-  return data?.current_organization_id ?? null
-}
+import { getDb, stepCampaigns, stepCampaignSteps, stepCampaignEnrollments } from '@/lib/db'
+import { getCurrentUser, getCurrentOrgId } from '@/lib/session'
+import { eq, and } from 'drizzle-orm'
 
 export async function saveSequence(data: {
   id?: string
@@ -22,42 +12,46 @@ export async function saveSequence(data: {
   trigger_event_id?: string
   trigger_tag_id?: string
 }) {
-  const user = await getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
-  const orgId = await getOrgId(user.id)
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
+  const db = getDb()
   const payload = {
     name: data.name,
     description: data.description || null,
-    trigger_type: data.trigger_type,
-    trigger_event_id: data.trigger_event_id || null,
-    trigger_tag_id: data.trigger_tag_id || null,
+    triggerType: data.trigger_type,
+    triggerEventId: data.trigger_event_id || null,
+    triggerTagId: data.trigger_tag_id || null,
   }
 
   if (data.id) {
-    const { error } = await admin.from('step_campaigns').update(payload).eq('id', data.id).eq('organization_id', orgId)
-    if (error) return { error: error.message }
+    await db
+      .update(stepCampaigns)
+      .set({ ...payload, updatedAt: new Date().toISOString() })
+      .where(and(eq(stepCampaigns.id, data.id), eq(stepCampaigns.organizationId, orgId)))
     return { id: data.id }
-  } else {
-    const { data: seq, error } = await admin.from('step_campaigns').insert({
-      ...payload, organization_id: orgId, created_by: user.id,
-    }).select('id').single()
-    if (error || !seq) return { error: error?.message ?? '作成に失敗しました' }
-    return { id: seq.id }
   }
+
+  const seq = await db
+    .insert(stepCampaigns)
+    .values({ ...payload, organizationId: orgId, createdBy: user.id })
+    .returning()
+    .get()
+
+  return { id: seq.id }
 }
 
 export async function updateSequenceStatus(id: string, status: string) {
-  const user = await getUser()
-  if (!user) return { error: 'ログインが必要です' }
-  const orgId = await getOrgId(user.id)
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin.from('step_campaigns').update({ status }).eq('id', id).eq('organization_id', orgId)
-  if (error) return { error: error.message }
+  const db = getDb()
+  await db
+    .update(stepCampaigns)
+    .set({ status, updatedAt: new Date().toISOString() })
+    .where(and(eq(stepCampaigns.id, id), eq(stepCampaigns.organizationId, orgId)))
   return {}
 }
 
@@ -71,56 +65,55 @@ export async function saveStep(data: {
   preview_text?: string
   body_html: string
 }) {
-  const user = await getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
+  const db = getDb()
   const payload = {
-    step_campaign_id: data.step_campaign_id,
-    step_number: data.step_number,
+    stepCampaignId: data.step_campaign_id,
+    stepNumber: data.step_number,
     name: data.name || null,
-    delay_days: data.delay_days,
+    delayDays: data.delay_days,
     subject: data.subject,
-    preview_text: data.preview_text || null,
-    body_html: data.body_html,
+    previewText: data.preview_text || null,
+    bodyHtml: data.body_html,
   }
 
   if (data.id) {
-    const { error } = await admin.from('step_campaign_steps').update(payload).eq('id', data.id)
-    if (error) return { error: error.message }
+    await db
+      .update(stepCampaignSteps)
+      .set({ ...payload, updatedAt: new Date().toISOString() })
+      .where(eq(stepCampaignSteps.id, data.id))
     return { id: data.id }
-  } else {
-    const { data: step, error } = await admin.from('step_campaign_steps').insert(payload).select('id').single()
-    if (error || !step) return { error: error?.message ?? '作成に失敗しました' }
-    return { id: step.id }
   }
+
+  const step = await db.insert(stepCampaignSteps).values(payload).returning().get()
+  return { id: step.id }
 }
 
 export async function deleteStep(id: string) {
-  const user = await getUser()
-  if (!user) return { error: 'ログインが必要です' }
-
-  const admin = await createAdminClient()
-  const { error } = await admin.from('step_campaign_steps').delete().eq('id', id)
-  if (error) return { error: error.message }
+  const db = getDb()
+  await db.delete(stepCampaignSteps).where(eq(stepCampaignSteps.id, id))
   return {}
 }
 
 export async function enrollCustomers(sequenceId: string, customerIds: string[]) {
-  const user = await getUser()
-  if (!user) return { error: 'ログインが必要です' }
-  const orgId = await getOrgId(user.id)
+  const orgId = await getCurrentOrgId()
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
-  const rows = customerIds.map(cid => ({
-    step_campaign_id: sequenceId,
-    customer_id: cid,
-    organization_id: orgId,
-    status: 'active',
-    current_step: 0,
-  }))
-  const { error } = await admin.from('step_campaign_enrollments').upsert(rows, { onConflict: 'step_campaign_id,customer_id', ignoreDuplicates: true })
-  if (error) return { error: error.message }
-  return { enrolled: rows.length }
+  const db = getDb()
+  for (const customerId of customerIds) {
+    await db
+      .insert(stepCampaignEnrollments)
+      .values({
+        stepCampaignId: sequenceId,
+        customerId,
+        organizationId: orgId,
+        status: 'active',
+        currentStep: 0,
+      })
+      .onConflictDoNothing()
+  }
+
+  return { enrolled: customerIds.length }
 }

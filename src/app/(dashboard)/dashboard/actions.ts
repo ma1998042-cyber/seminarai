@@ -1,43 +1,46 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getDb, organizations, organizationMembers, userProfiles, plans, events } from '@/lib/db'
+import { getCurrentUser } from '@/lib/session'
 import { generateSlug } from '@/lib/utils'
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 export async function createOrganizationFromDashboard(orgName: string, orgType: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
+  const db = getDb()
   const slug = generateSlug(orgName)
-  const { data: plan } = await admin.from('plans').select('id').eq('name', 'free').single()
+  const plan = await db.select().from(plans).where(eq(plans.name, 'free')).get()
 
-  const { data: org, error: orgErr } = await admin
-    .from('organizations')
-    .insert({
+  const org = await db
+    .insert(organizations)
+    .values({
       name: orgName,
       slug,
-      settings: { business_type: orgType },
-      plan_id: plan?.id ?? null,
+      settings: JSON.stringify({ business_type: orgType }),
+      planId: plan?.id ?? null,
     })
-    .select('id')
-    .single()
+    .returning()
+    .get()
 
-  if (orgErr || !org) return { error: orgErr?.message ?? '組織の作成に失敗しました' }
+  if (!org) return { error: '組織の作成に失敗しました' }
 
-  await admin.from('organization_members').insert({
-    organization_id: org.id,
-    user_id: user.id,
+  await db.insert(organizationMembers).values({
+    organizationId: org.id,
+    userId: user.id,
     role: 'owner',
-    joined_at: new Date().toISOString(),
+    joinedAt: new Date().toISOString(),
   })
 
-  await admin.from('user_profiles').upsert({
-    id: user.id,
-    current_organization_id: org.id,
-    onboarding_completed: true,
-  })
+  await db
+    .insert(userProfiles)
+    .values({ id: user.id, currentOrganizationId: org.id, onboardingCompleted: true })
+    .onConflictDoUpdate({
+      target: userProfiles.id,
+      set: { currentOrganizationId: org.id, onboardingCompleted: true },
+    })
 
   revalidatePath('/dashboard')
   return { orgId: org.id }

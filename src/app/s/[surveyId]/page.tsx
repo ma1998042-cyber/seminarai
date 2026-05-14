@@ -1,18 +1,29 @@
-import { createAdminClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
-import SurveyForm from "./SurveyForm";
+import { getDb, surveys, surveyQuestions } from '@/lib/db'
+import { eq } from 'drizzle-orm'
+import { notFound } from 'next/navigation'
+import SurveyForm from './SurveyForm'
 
 export default async function PublicSurveyPage({ params }: { params: Promise<{ surveyId: string }> }) {
-  const { surveyId } = await params;
-  const admin = await createAdminClient();
+  const { surveyId } = await params
+  const db = getDb()
 
-  const { data: survey } = await admin
-    .from("surveys")
-    .select("id, organization_id, title, description, thank_you_message, status, is_anonymous, payment_enabled, payment_amount")
-    .eq("id", surveyId)
-    .single();
+  const survey = await db
+    .select({
+      id: surveys.id,
+      organizationId: surveys.organizationId,
+      title: surveys.title,
+      description: surveys.description,
+      thankYouMessage: surveys.thankYouMessage,
+      status: surveys.status,
+      isAnonymous: surveys.isAnonymous,
+      paymentEnabled: surveys.paymentEnabled,
+      paymentAmount: surveys.paymentAmount,
+    })
+    .from(surveys)
+    .where(eq(surveys.id, surveyId))
+    .get()
 
-  if (!survey || survey.status !== "active") {
+  if (!survey || survey.status !== 'active') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
@@ -23,28 +34,43 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
           <p className="text-gray-400">このアンケートは現在受付していません</p>
         </div>
       </div>
-    );
+    )
   }
 
-  const { data: questions } = await admin
-    .from("survey_questions")
-    .select("id, question_type, title, description, is_required, options")
-    .eq("survey_id", surveyId)
-    .order("sort_order");
+  const questions = await db
+    .select({
+      id: surveyQuestions.id,
+      questionType: surveyQuestions.questionType,
+      title: surveyQuestions.title,
+      description: surveyQuestions.description,
+      isRequired: surveyQuestions.isRequired,
+      options: surveyQuestions.options,
+    })
+    .from(surveyQuestions)
+    .where(eq(surveyQuestions.surveyId, surveyId))
+    .orderBy(surveyQuestions.sortOrder)
 
   return (
     <SurveyForm
       survey={{
-        ...survey,
-        is_anonymous: survey.is_anonymous ?? false,
-        payment_enabled: survey.payment_enabled ?? false,
-        payment_amount: survey.payment_amount ?? 0,
+        id: survey.id,
+        organization_id: survey.organizationId,
+        title: survey.title,
+        description: survey.description ?? null,
+        thank_you_message: survey.thankYouMessage ?? null,
+        status: survey.status,
+        is_anonymous: survey.isAnonymous ?? false,
+        payment_enabled: false,
+        payment_amount: 0,
       }}
-      questions={(questions ?? []).map((q) => ({
-        ...q,
+      questions={questions.map((q) => ({
+        id: q.id,
+        question_type: q.questionType,
+        title: q.title,
         description: q.description ?? null,
-        options: Array.isArray(q.options) ? (q.options as string[]) : null,
+        is_required: q.isRequired ?? false,
+        options: q.options ? (JSON.parse(q.options) as string[]) : null,
       }))}
     />
-  );
+  )
 }

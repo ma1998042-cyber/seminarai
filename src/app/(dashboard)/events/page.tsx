@@ -1,39 +1,40 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Plus, CalendarDays, Users, ExternalLink } from "lucide-react";
-import { formatDate, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, cn } from "@/lib/utils";
+import { auth } from '@/lib/auth'
+import { getDb, userProfiles, events } from '@/lib/db'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Plus, CalendarDays, Users, ExternalLink } from 'lucide-react'
+import { formatDate, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, cn } from '@/lib/utils'
+import { eq, desc } from 'drizzle-orm'
 
 export default async function EventsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const session = await auth()
+  if (!session?.user) redirect('/auth/login')
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDb()
+  const profile = await db
+    .select({ currentOrganizationId: userProfiles.currentOrganizationId })
+    .from(userProfiles)
+    .where(eq(userProfiles.id, session.user.id))
+    .get()
 
-  const orgId = profile?.current_organization_id;
-  if (!orgId) redirect("/onboarding");
+  const orgId = profile?.currentOrganizationId
+  if (!orgId) redirect('/onboarding')
 
-  const { data: events } = await supabase
-    .from("events")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const eventRows = await db
+    .select()
+    .from(events)
+    .where(eq(events.organizationId, orgId))
+    .orderBy(desc(events.createdAt))
 
   const statusColors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-600",
-    active: "bg-green-100 text-green-700",
-    closed: "bg-gray-100 text-gray-500",
-    archived: "bg-amber-100 text-amber-700",
-  };
+    draft: 'bg-gray-100 text-gray-600',
+    active: 'bg-green-100 text-green-700',
+    closed: 'bg-gray-100 text-gray-500',
+    archived: 'bg-amber-100 text-amber-700',
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">イベント管理</h1>
@@ -48,10 +49,9 @@ export default async function EventsPage() {
         </Link>
       </div>
 
-      {/* Events list */}
-      {events && events.length > 0 ? (
+      {eventRows.length > 0 ? (
         <div className="space-y-3">
-          {events.map((event) => (
+          {eventRows.map((event) => (
             <Link
               key={event.id}
               href={`/events/${event.id}`}
@@ -63,18 +63,16 @@ export default async function EventsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
-                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", statusColors[event.status] || statusColors.draft)}>
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', statusColors[event.status] || statusColors.draft)}>
                     {EVENT_STATUS_LABELS[event.status] || event.status}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <span>{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</span>
-                  {event.start_date && (
-                    <span>{formatDate(event.start_date)}</span>
-                  )}
+                  <span>{EVENT_TYPE_LABELS[event.eventType] || event.eventType}</span>
+                  {event.startDate && <span>{formatDate(event.startDate)}</span>}
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    {event.registration_count}名
+                    {event.registrationCount}名
                   </span>
                 </div>
               </div>
@@ -99,5 +97,5 @@ export default async function EventsPage() {
         </div>
       )}
     </div>
-  );
+  )
 }
