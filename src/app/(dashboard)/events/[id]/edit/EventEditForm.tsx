@@ -53,6 +53,12 @@ export default function EventEditForm({ event }: { event: EventData }) {
     setLoading(true);
     setError("");
 
+    if (form.visibility === "public" && !form.start_date) {
+      setError("一般公開するには開催日時を設定してください");
+      setLoading(false);
+      return;
+    }
+
     const result = await updateEventAction(event.id, form);
 
     if (result.error) {

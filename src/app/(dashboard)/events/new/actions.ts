@@ -29,6 +29,10 @@ export async function createEventAction(form: {
   const profile = await getUserProfile(db, user.id)
   if (!profile?.currentOrganizationId) return { error: '組織が見つかりません' }
 
+  if (form.visibility === 'public' && !form.start_date) {
+    return { error: '一般公開するには開催日時を設定してください' }
+  }
+
   const event = await createEvent(db, {
     organizationId: profile.currentOrganizationId,
     title: form.title,
