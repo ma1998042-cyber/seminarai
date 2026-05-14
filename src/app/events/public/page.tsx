@@ -42,7 +42,7 @@ export default async function PublicEventsPage() {
                     const thumb = event.thumbnailUrl || ((event.imageUrls as string[] | null)?.[0]);
                     return thumb ? (
                       <div className="w-full aspect-video bg-gray-100">
-                        <img src={thumb} alt={event.title} className="w-full h-full object-cover" />
+                        <img src={thumb} alt={event.title} className="w-full h-full object-contain" />
                       </div>
                     ) : (
                       <div className="w-full aspect-video bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">

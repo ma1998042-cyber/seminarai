@@ -160,8 +160,8 @@ export default function EventEditForm({ event }: { event: EventData }) {
           </label>
           <div className="grid grid-cols-3 gap-3">
             {imageUrls.map((url, index) => (
-              <div key={index} className="relative aspect-video rounded-lg overflow-hidden border border-gray-200">
-                <img src={url} alt={`イベント画像 ${index + 1}`} className="w-full h-full object-cover" />
+              <div key={index} className="relative aspect-video rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                <img src={url} alt={`イベント画像 ${index + 1}`} className="w-full h-full object-contain" />
                 <button
                   type="button"
                   onClick={() => removeImage(index)}
