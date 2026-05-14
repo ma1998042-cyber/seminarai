@@ -30,6 +30,7 @@ export default function NewEventPage() {
     online_url: "",
     capacity: "",
     status: "draft",
+    visibility: "draft",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -216,6 +217,28 @@ export default function NewEventPage() {
                 }`}
               >
                 {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">公開設定</label>
+          <div className="flex gap-3">
+            {[
+              { value: "draft", label: "下書き" },
+              { value: "unlisted", label: "限定公開" },
+              { value: "public", label: "一般公開" },
+            ].map((v) => (
+              <button
+                key={v.value}
+                type="button"
+                onClick={() => setForm({ ...form, visibility: v.value })}
+                className={`flex-1 py-3 rounded-lg border text-sm font-medium transition-all ${
+                  form.visibility === v.value ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-200 text-gray-600"
+                }`}
+              >
+                {v.label}
               </button>
             ))}
           </div>

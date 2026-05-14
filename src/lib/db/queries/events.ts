@@ -6,9 +6,11 @@ import type { Database } from "..";
 // イベント CRUD（組織スコープ付き）
 // =============================================
 
-export async function getEvents(db: Database, orgId: string) {
+export async function getEvents(db: Database, orgId: string, visibility?: string) {
   return db.query.events.findMany({
-    where: eq(events.organizationId, orgId),
+    where: visibility
+      ? and(eq(events.organizationId, orgId), eq(events.visibility, visibility))
+      : eq(events.organizationId, orgId),
     orderBy: (events, { desc }) => [desc(events.createdAt)],
   });
 }
@@ -27,6 +29,7 @@ export async function createEvent(
     description?: string;
     eventType?: string;
     status?: string;
+    visibility?: string;
     startDate?: string;
     endDate?: string;
     location?: string;
@@ -53,6 +56,7 @@ export async function updateEvent(
     description: string | null;
     eventType: string;
     status: string;
+    visibility: string;
     startDate: string | null;
     endDate: string | null;
     location: string | null;

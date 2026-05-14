@@ -92,3 +92,9 @@ export const EVENT_STATUS_LABELS: Record<string, string> = {
   closed: '終了',
   archived: 'アーカイブ',
 }
+
+export const EVENT_VISIBILITY_LABELS: Record<string, string> = {
+  public: "一般公開",
+  unlisted: "限定公開",
+  draft: "下書き",
+}

@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, Users, ClipboardList, Edit, ExternalLink, MapPin, Globe } from "lucide-react";
-import { formatDateTime, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, cn } from "@/lib/utils";
+import { formatDateTime, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LABELS, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
@@ -16,6 +16,12 @@ const statusColors: Record<string, string> = {
   active: "bg-green-100 text-green-700",
   closed: "bg-gray-100 text-gray-500",
   archived: "bg-amber-100 text-amber-700",
+};
+
+const visibilityColors: Record<string, string> = {
+  public: "bg-blue-100 text-blue-700",
+  unlisted: "bg-yellow-100 text-yellow-700",
+  draft: "bg-gray-100 text-gray-500",
 };
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -68,6 +74,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
               <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", s)}>
                 {EVENT_STATUS_LABELS[event.status] || event.status}
+              </span>
+              <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", visibilityColors[event.visibility] || visibilityColors.draft)}>
+                {EVENT_VISIBILITY_LABELS[event.visibility] || event.visibility}
               </span>
             </div>
             <p className="text-sm text-gray-500">{EVENT_TYPE_LABELS[event.eventType] || event.eventType}</p>
