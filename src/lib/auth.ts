@@ -5,7 +5,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { userProfiles } from "@/lib/db/schema";
 
-function getD1(): D1Database {
+function getD1() {
   const { env } = getCloudflareContext();
   return env.DB;
 }
