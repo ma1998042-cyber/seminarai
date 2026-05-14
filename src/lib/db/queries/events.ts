@@ -1,5 +1,5 @@
-import { eq, and, sql } from "drizzle-orm";
-import { events, eventRegistrations } from "../schema";
+import { eq, and, sql, inArray } from "drizzle-orm";
+import { events, eventRegistrations, customers } from "../schema";
 import type { Database } from "..";
 
 // =============================================
@@ -76,6 +76,20 @@ export async function updateEvent(
     .where(and(eq(events.id, id), eq(events.organizationId, orgId)))
     .returning();
   return event;
+}
+
+// =============================================
+// 公開ページ用クエリ
+// =============================================
+
+export async function getPublicEvent(db: Database, eventId: string) {
+  return db.query.events.findFirst({
+    where: and(
+      eq(events.id, eventId),
+      inArray(events.visibility, ["public", "unlisted"]),
+      eq(events.status, "active"),
+    ),
+  });
 }
 
 // =============================================
