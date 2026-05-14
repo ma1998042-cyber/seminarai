@@ -15,6 +15,13 @@
       "when": 1778757200000,
       "tag": "0001_add_payment_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778762056005,
+      "tag": "0002_clumsy_tana_nile",
+      "breakpoints": true
     }
   ]
 }

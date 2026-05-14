@@ -111,6 +111,7 @@ export const events = sqliteTable("events", {
   onlineUrl: text("online_url"),
   capacity: integer("capacity"),
   registrationCount: integer("registration_count").notNull().default(0),
+  visibility: text("visibility").notNull().default("draft"),
   thumbnailUrl: text("thumbnail_url"),
   tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
   customFields: text("custom_fields", { mode: "json" }).notNull().$type<unknown[]>().default([]),
@@ -121,6 +122,7 @@ export const events = sqliteTable("events", {
 }, (table) => [
   index("idx_events_org").on(table.organizationId),
   index("idx_events_status").on(table.organizationId, table.status),
+  index("idx_events_visibility").on(table.organizationId, table.visibility),
 ]);
 
 // =============================================
@@ -205,6 +207,7 @@ export const surveys = sqliteTable("surveys", {
   title: text("title").notNull(),
   description: text("description"),
   status: text("status").notNull().default("draft"),
+  category: text("category").notNull().default("general"),
   isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(false),
   thankYouMessage: text("thank_you_message"),
   redirectUrl: text("redirect_url"),
