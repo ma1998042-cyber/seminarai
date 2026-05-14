@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getOrganizationById, getUserOrganizations } from "@/lib/db/queries/organizations";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Header from "@/components/dashboard/Header";
 
@@ -8,39 +12,28 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  const user = session?.user;
 
   if (!user) {
     redirect("/auth/login");
   }
 
-  const admin = await createAdminClient();
+  const db = getDbFromContext();
 
-  // Get user profile via admin client (bypasses RLS)
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // Get user profile
+  const profile = await getUserProfile(db, user.id);
 
-  // Get current organization
+  // Get current organization (with plan)
   let organization = null;
-  if (profile?.current_organization_id) {
-    const { data } = await admin
-      .from("organizations")
-      .select("*, plans(*)")
-      .eq("id", profile.current_organization_id)
-      .single();
-    organization = data;
+  if (profile?.currentOrganizationId) {
+    organization = await getOrganizationById(db, profile.currentOrganizationId);
   }
 
   // Get all user organizations
-  const { data: memberships } = await admin
-    .from("organization_members")
-    .select("*, organizations(id, name, slug, logo_url)")
-    .eq("user_id", user.id)
-    .eq("is_active", true);
+  const memberships = await getUserOrganizations(db, user.id);
 
   return (
     <div className="flex h-screen bg-gray-50">

@@ -1,6 +1,11 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
+import { eq, sql } from "drizzle-orm";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { events, customers, surveys, emailCampaigns } from "@/lib/db/schema";
 import CreateOrgCard from "./CreateOrgCard";
 import {
   CalendarDays,
@@ -14,48 +19,46 @@ import {
 import { formatNumber } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
 
-  const orgId = profile?.current_organization_id;
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) return <CreateOrgCard />;
 
-  // Fetch stats
-  const [
-    { count: eventsCount },
-    { count: customersCount },
-    { count: surveysCount },
-    { count: campaignsCount },
-  ] = await Promise.all([
-    supabase.from("events").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-    supabase.from("surveys").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
-    supabase.from("email_campaigns").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
+  // Fetch stats (counts)
+  const [eventsResult, customersResult, surveysResult, campaignsResult] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(events).where(eq(events.organizationId, orgId)),
+    db.select({ count: sql<number>`count(*)` }).from(customers).where(eq(customers.organizationId, orgId)),
+    db.select({ count: sql<number>`count(*)` }).from(surveys).where(eq(surveys.organizationId, orgId)),
+    db.select({ count: sql<number>`count(*)` }).from(emailCampaigns).where(eq(emailCampaigns.organizationId, orgId)),
   ]);
 
+  const eventsCount = eventsResult[0]?.count ?? 0;
+  const customersCount = customersResult[0]?.count ?? 0;
+  const surveysCount = surveysResult[0]?.count ?? 0;
+  const campaignsCount = campaignsResult[0]?.count ?? 0;
+
   // Recent events
-  const { data: recentEvents } = await supabase
-    .from("events")
-    .select("id, title, status, start_date, registration_count")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const recentEvents = await db.query.events.findMany({
+    where: eq(events.organizationId, orgId),
+    columns: { id: true, title: true, status: true, startDate: true, registrationCount: true },
+    orderBy: (events, { desc }) => [desc(events.createdAt)],
+    limit: 5,
+  });
 
   // Recent customers
-  const { data: recentCustomers } = await supabase
-    .from("customers")
-    .select("id, full_name, email, created_at")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const recentCustomers = await db.query.customers.findMany({
+    where: eq(customers.organizationId, orgId),
+    columns: { id: true, fullName: true, email: true, createdAt: true },
+    orderBy: (customers, { desc }) => [desc(customers.createdAt)],
+    limit: 5,
+  });
 
   const stats = [
     { label: "イベント", value: eventsCount || 0, icon: CalendarDays, color: "text-indigo-600", bg: "bg-indigo-50", href: "/events" },
@@ -147,7 +150,7 @@ export default async function DashboardPage() {
                     <div>
                       <p className="text-sm font-medium text-gray-900">{event.title}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        参加者 {event.registration_count}名
+                        参加者 {event.registrationCount}名
                       </p>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${s.className}`}>
@@ -184,12 +187,12 @@ export default async function DashboardPage() {
                 >
                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-semibold text-gray-600">
-                      {(customer.full_name || customer.email || "U").charAt(0).toUpperCase()}
+                      {(customer.fullName || customer.email || "U").charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {customer.full_name || "名前なし"}
+                      {customer.fullName || "名前なし"}
                     </p>
                     <p className="text-xs text-gray-400">{customer.email}</p>
                   </div>

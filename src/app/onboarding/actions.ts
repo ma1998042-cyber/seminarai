@@ -1,77 +1,92 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+import { eq } from 'drizzle-orm'
+import { getAuth } from '@/lib/auth'
+import { getDbFromContext } from '@/lib/db'
+import { plans } from '@/lib/db/schema'
+import {
+  createOrganization as createOrg,
+  addOrganizationMember,
+} from '@/lib/db/queries/organizations'
+import { upsertUserProfile } from '@/lib/db/queries/users'
+import { createEvent as createEvt } from '@/lib/db/queries/events'
 import { generateSlug } from '@/lib/utils'
 
+async function getSessionUser() {
+  const auth = getAuth()
+  const headersList = await headers()
+  const session = await auth.api.getSession({ headers: headersList })
+  return session?.user ?? null
+}
+
 export async function createOrganization(orgName: string, orgType: string) {
-  // ユーザー認証確認（通常クライアント）
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  // DB操作はService Role（RLSバイパス）で実行
-  const admin = await createAdminClient()
-
+  const db = getDbFromContext()
   const slug = generateSlug(orgName)
-  const { data: plan } = await admin.from('plans').select('id').eq('name', 'free').single()
 
-  const { data: org, error: orgErr } = await admin
-    .from('organizations')
-    .insert({
+  // Get free plan
+  const freePlan = await db.query.plans.findFirst({
+    where: eq(plans.name, 'free'),
+    columns: { id: true },
+  })
+
+  let org: { id: string }
+  try {
+    org = await createOrg(db, {
       name: orgName,
       slug,
       settings: { business_type: orgType },
-      plan_id: plan?.id ?? null,
+      planId: freePlan?.id ?? undefined,
     })
-    .select()
-    .single()
-
-  if (orgErr || !org) {
-    return { error: `${orgErr?.message} (code: ${orgErr?.code})` }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '不明なエラー'
+    return { error: `${message}` }
   }
 
-  await admin.from('organization_members').insert({
-    organization_id: org.id,
-    user_id: user.id,
+  await addOrganizationMember(db, {
+    organizationId: org.id,
+    userId: user.id,
     role: 'owner',
-    joined_at: new Date().toISOString(),
+    joinedAt: new Date().toISOString(),
   })
 
-  await admin.from('user_profiles').upsert({
-    id: user.id,
-    current_organization_id: org.id,
+  await upsertUserProfile(db, user.id, {
+    currentOrganizationId: org.id,
   })
 
   return { orgId: org.id }
 }
 
 export async function createEvent(orgId: string, eventTitle: string, eventType: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin.from('events').insert({
-    organization_id: orgId,
-    title: eventTitle,
-    event_type: eventType,
-    status: 'draft',
-    created_by: user.id,
-  })
+  const db = getDbFromContext()
+  try {
+    await createEvt(db, {
+      organizationId: orgId,
+      title: eventTitle,
+      eventType,
+      status: 'draft',
+      createdBy: user.id,
+    })
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : '不明なエラー' }
+  }
 
-  if (error) return { error: error.message }
   return {}
 }
 
 export async function completeOnboarding() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
-  await admin.from('user_profiles').upsert({
-    id: user.id,
-    onboarding_completed: true,
+  const db = getDbFromContext()
+  await upsertUserProfile(db, user.id, {
+    onboardingCompleted: true,
   })
 
   return {}
