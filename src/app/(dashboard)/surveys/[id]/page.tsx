@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, MessageSquare, Copy, ExternalLink, BarChart3 } from "lucide-react";
+import { ArrowLeft, MessageSquare, ExternalLink, BarChart3 } from "lucide-react";
+import CopyUrlButton from "./CopyUrlButton";
 import { formatDateTime, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
@@ -92,9 +93,7 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
                 <code className="flex-1 bg-white px-3 py-2 rounded-lg text-sm text-gray-700 border border-indigo-200 truncate">
                   {publicUrl}
                 </code>
-                <button className="p-2 bg-white rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors">
-                  <Copy className="w-4 h-4 text-indigo-600" />
-                </button>
+                <CopyUrlButton url={publicUrl} />
               </div>
             </div>
           )}
