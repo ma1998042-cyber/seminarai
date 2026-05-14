@@ -1,11 +1,23 @@
-import { eq, and } from "drizzle-orm";
-import { tags } from "../schema";
+import { eq, and, sql } from "drizzle-orm";
+import { tags, customerTags } from "../schema";
 import type { Database } from "..";
 
 export async function getTags(db: Database, orgId: string) {
   return db.query.tags.findMany({
     where: eq(tags.organizationId, orgId),
     orderBy: (t, { asc }) => [asc(t.name)],
+  });
+}
+
+export async function getTagsWithCount(db: Database, orgId: string) {
+  return db.query.tags.findMany({
+    where: eq(tags.organizationId, orgId),
+    orderBy: (t, { asc }) => [asc(t.name)],
+    with: {
+      customerTags: {
+        columns: { customerId: true },
+      },
+    },
   });
 }
 

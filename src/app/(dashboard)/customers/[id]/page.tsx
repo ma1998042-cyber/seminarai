@@ -1,4 +1,9 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getCustomerById, getCustomerRegistrations } from "@/lib/db/queries/customers";
+import { getTags } from "@/lib/db/queries/tags";
+import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Phone, Building2, Briefcase, Calendar } from "lucide-react";
@@ -25,44 +30,26 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/dashboard");
 
-  const { data: customer } = await admin
-    .from("customers")
-    .select("*, customer_tags(tags(id, name, color))")
-    .eq("id", id)
-    .eq("organization_id", orgId)
-    .single();
-
+  const customer = await getCustomerById(db, orgId, id);
   if (!customer) notFound();
 
-  const { data: allTags } = await admin
-    .from("tags")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("name");
+  const allTags = await getTags(db, orgId);
 
-  const { data: registrations } = await admin
-    .from("event_registrations")
-    .select("*, events(id, title, start_date)")
-    .eq("customer_id", id)
-    .order("registered_at", { ascending: false })
-    .limit(5);
+  const registrations = await getCustomerRegistrations(db, id, { limit: 5 });
 
-  const customerTags = (customer.customer_tags as any[])
-    ?.map((ct: any) => ct.tags)
+  const customerTags = (customer.customerTags as any[])
+    ?.map((ct: any) => ct.tag)
     .filter(Boolean) ?? [];
 
   return (
@@ -75,7 +62,7 @@ export default async function CustomerDetailPage({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-2xl font-bold text-gray-900">
-                {customer.full_name || "名前なし"}
+                {customer.fullName || "名前なし"}
               </h1>
               <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", statusColors[customer.status] || statusColors.active)}>
                 {statusLabels[customer.status] || customer.status}
@@ -92,11 +79,11 @@ export default async function CustomerDetailPage({
           <CustomerEditForm
             customerId={id}
             initial={{
-              full_name: customer.full_name ?? "",
+              full_name: customer.fullName ?? "",
               email: customer.email,
               phone: customer.phone ?? "",
               company: customer.company ?? "",
-              job_title: customer.job_title ?? "",
+              job_title: customer.jobTitle ?? "",
               notes: customer.notes ?? "",
               status: customer.status,
             }}
@@ -107,17 +94,17 @@ export default async function CustomerDetailPage({
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <h2 className="font-semibold text-gray-900 mb-4">参加イベント履歴</h2>
               <div className="space-y-2">
-                {registrations.map((reg) => (
+                {registrations.map((reg: any) => (
                   <Link
                     key={reg.id}
-                    href={`/events/${(reg as any).events?.id}`}
+                    href={`/events/${reg.event?.id}`}
                     className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <Calendar className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-medium text-gray-800">{(reg as any).events?.title}</p>
-                        <p className="text-xs text-gray-400">{formatDateTime(reg.registered_at)}</p>
+                        <p className="text-sm font-medium text-gray-800">{reg.event?.title}</p>
+                        <p className="text-xs text-gray-400">{formatDateTime(reg.registeredAt)}</p>
                       </div>
                     </div>
                     <span className="text-xs text-gray-400">{reg.status}</span>
@@ -152,10 +139,10 @@ export default async function CustomerDetailPage({
                 {customer.company}
               </div>
             )}
-            {customer.job_title && (
+            {customer.jobTitle && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Briefcase className="w-4 h-4 text-gray-400" />
-                {customer.job_title}
+                {customer.jobTitle}
               </div>
             )}
             <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -163,7 +150,7 @@ export default async function CustomerDetailPage({
               {customer.email}
             </div>
             <div className="pt-2 border-t border-gray-50 text-xs text-gray-400 space-y-1">
-              <p>登録日：{formatDateTime(customer.created_at)}</p>
+              <p>登録日：{formatDateTime(customer.createdAt)}</p>
               {customer.source && <p>流入元：{customer.source}</p>}
             </div>
           </div>

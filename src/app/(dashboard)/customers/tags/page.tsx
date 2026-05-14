@@ -1,29 +1,34 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getTagsWithCount } from "@/lib/db/queries/tags";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import TagsClient from "./TagsClient";
 
 export default async function TagsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/dashboard");
 
-  const { data: tags } = await admin
-    .from("tags")
-    .select("*, customer_tags(count)")
-    .eq("organization_id", orgId)
-    .order("name");
+  const tagsWithCount = await getTagsWithCount(db, orgId);
+
+  // Transform to match the expected shape for TagsClient
+  const tags = tagsWithCount.map((t) => ({
+    id: t.id,
+    name: t.name,
+    color: t.color,
+    is_auto: t.isAuto,
+    customer_tags: [{ count: t.customerTags.length }],
+  }));
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

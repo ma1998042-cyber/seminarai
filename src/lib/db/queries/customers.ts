@@ -1,5 +1,5 @@
-import { eq, and, like, or, sql } from "drizzle-orm";
-import { customers, customerTags, tags } from "../schema";
+import { eq, and, like, or, sql, desc } from "drizzle-orm";
+import { customers, customerTags, tags, eventRegistrations } from "../schema";
 import type { Database } from "..";
 
 // =============================================
@@ -14,6 +14,7 @@ export async function getCustomers(
     status?: string;
     limit?: number;
     offset?: number;
+    withTags?: boolean;
   },
 ) {
   const conditions = [eq(customers.organizationId, orgId)];
@@ -38,6 +39,13 @@ export async function getCustomers(
     limit: options?.limit ?? 50,
     offset: options?.offset ?? 0,
     orderBy: (customers, { desc }) => [desc(customers.createdAt)],
+    ...(options?.withTags && {
+      with: {
+        customerTags: {
+          with: { tag: true },
+        },
+      },
+    }),
   });
 }
 
@@ -173,4 +181,21 @@ export async function removeCustomerTag(db: Database, customerId: string, tagId:
     .where(and(eq(customerTags.customerId, customerId), eq(customerTags.tagId, tagId)))
     .returning();
   return removed;
+}
+
+// =============================================
+// 顧客のイベント参加履歴
+// =============================================
+
+export async function getCustomerRegistrations(
+  db: Database,
+  customerId: string,
+  options?: { limit?: number },
+) {
+  return db.query.eventRegistrations.findMany({
+    where: eq(eventRegistrations.customerId, customerId),
+    with: { event: true },
+    orderBy: (reg, { desc }) => [desc(reg.registeredAt)],
+    limit: options?.limit ?? 5,
+  });
 }

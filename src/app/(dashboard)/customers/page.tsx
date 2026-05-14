@@ -1,4 +1,9 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getCustomers } from "@/lib/db/queries/customers";
+import { getTags } from "@/lib/db/queries/tags";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, Users, Tag, Upload } from "lucide-react";
@@ -12,46 +17,35 @@ export default async function CustomersPage({
 }) {
   const { q, tag, status } = await searchParams;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/dashboard");
 
   // Tags for filter
-  const { data: tags } = await admin
-    .from("tags")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("name");
+  const allTags = await getTags(db, orgId);
 
   // Build customer query
-  let query = admin
-    .from("customers")
-    .select("*, customer_tags(tags(id, name, color))", { count: "exact" })
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const customerList = await getCustomers(db, orgId, {
+    search: q,
+    status,
+    limit: 100,
+    withTags: true,
+  });
 
-  if (q) query = query.ilike("full_name", `%${q}%`).or(`email.ilike.%${q}%`);
-  if (status) query = query.eq("status", status);
+  const count = customerList.length;
 
-  const { data: customers, count } = await query;
-
-  // Filter by tag client-side (joining through customer_tags is complex in supabase query)
+  // Filter by tag client-side
   const filtered = tag
-    ? (customers ?? []).filter((c) =>
-        (c.customer_tags as any[])?.some((ct: any) => ct.tags?.id === tag)
+    ? customerList.filter((c: any) =>
+        c.customerTags?.some((ct: any) => ct.tag?.id === tag)
       )
-    : (customers ?? []);
+    : customerList;
 
   const statusColors: Record<string, string> = {
     active: "bg-green-100 text-green-700",
@@ -98,7 +92,7 @@ export default async function CustomersPage({
         </div>
       </div>
 
-      <CustomerSearch tags={tags ?? []} currentQ={q} currentTag={tag} currentStatus={status} />
+      <CustomerSearch tags={allTags ?? []} currentQ={q} currentTag={tag} currentStatus={status} />
 
       {filtered.length > 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -113,9 +107,9 @@ export default async function CustomersPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((customer) => {
-                const customerTags = (customer.customer_tags as any[])
-                  ?.map((ct: any) => ct.tags)
+              {filtered.map((customer: any) => {
+                const customerTags = (customer.customerTags as any[])
+                  ?.map((ct: any) => ct.tag)
                   .filter(Boolean) ?? [];
                 return (
                   <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
@@ -123,12 +117,12 @@ export default async function CustomersPage({
                       <Link href={`/customers/${customer.id}`} className="flex items-center gap-3 group">
                         <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-sm font-bold text-indigo-700">
-                            {(customer.full_name || customer.email || "U").charAt(0).toUpperCase()}
+                            {(customer.fullName || customer.email || "U").charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                            {customer.full_name || "名前なし"}
+                            {customer.fullName || "名前なし"}
                           </p>
                           <p className="text-xs text-gray-400">{customer.email}</p>
                         </div>
@@ -136,8 +130,8 @@ export default async function CustomersPage({
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm text-gray-600">{customer.company || "—"}</p>
-                      {customer.job_title && (
-                        <p className="text-xs text-gray-400">{customer.job_title}</p>
+                      {customer.jobTitle && (
+                        <p className="text-xs text-gray-400">{customer.jobTitle}</p>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -162,7 +156,7 @@ export default async function CustomersPage({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400">
-                      {formatDate(customer.created_at)}
+                      {formatDate(customer.createdAt)}
                     </td>
                   </tr>
                 );

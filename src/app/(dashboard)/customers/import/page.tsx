@@ -161,7 +161,7 @@ export default function ImportPage() {
     setLoading(false);
     if ("error" in res && res.error) { setError(res.error); return; }
     if ("imported" in res) {
-      setResult({ imported: res.imported, skipped: res.skipped });
+      setResult({ imported: res.imported!, skipped: res.skipped! });
       setStep(4);
     }
   };

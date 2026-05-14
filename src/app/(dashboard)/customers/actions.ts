@@ -1,19 +1,33 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getAuth } from '@/lib/auth'
+import { getDbFromContext } from '@/lib/db'
+import { getUserProfile } from '@/lib/db/queries/users'
+import {
+  createCustomer as dbCreateCustomer,
+  updateCustomer as dbUpdateCustomer,
+  deleteCustomer as dbDeleteCustomer,
+  addCustomerTag,
+  removeCustomerTag,
+} from '@/lib/db/queries/customers'
+import { createTag as dbCreateTag, deleteTag as dbDeleteTag } from '@/lib/db/queries/tags'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 
 async function getOrgId() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
   if (!user) return null
-  const admin = await createAdminClient()
-  const { data: profile } = await admin
-    .from('user_profiles')
-    .select('current_organization_id')
-    .eq('id', user.id)
-    .single()
-  return profile?.current_organization_id ?? null
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  return profile?.currentOrganizationId ?? null
+}
+
+async function getUserId() {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  return session?.user?.id ?? null
 }
 
 export async function createCustomer(data: {
@@ -28,16 +42,24 @@ export async function createCustomer(data: {
   const orgId = await getOrgId()
   if (!orgId) return { error: '組織が見つかりません' }
 
-  const admin = await createAdminClient()
-  const { data: customer, error } = await admin
-    .from('customers')
-    .insert({ organization_id: orgId, source: 'manual', ...data })
-    .select('id')
-    .single()
-
-  if (error) return { error: error.message }
-  revalidatePath('/customers')
-  return { id: customer.id }
+  try {
+    const db = getDbFromContext()
+    const customer = await dbCreateCustomer(db, {
+      organizationId: orgId,
+      email: data.email,
+      fullName: data.full_name,
+      phone: data.phone,
+      company: data.company,
+      jobTitle: data.job_title,
+      notes: data.notes,
+      status: data.status,
+      source: 'manual',
+    })
+    revalidatePath('/customers')
+    return { id: customer.id }
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
 
 export async function updateCustomer(
@@ -55,88 +77,97 @@ export async function updateCustomer(
   const orgId = await getOrgId()
   if (!orgId) return { error: '組織が見つかりません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin
-    .from('customers')
-    .update(data)
-    .eq('id', customerId)
-    .eq('organization_id', orgId)
-
-  if (error) return { error: error.message }
-  revalidatePath(`/customers/${customerId}`)
-  revalidatePath('/customers')
-  return {}
+  try {
+    const db = getDbFromContext()
+    await dbUpdateCustomer(db, orgId, customerId, {
+      fullName: data.full_name ?? null,
+      email: data.email,
+      phone: data.phone ?? null,
+      company: data.company ?? null,
+      jobTitle: data.job_title ?? null,
+      notes: data.notes ?? null,
+      status: data.status,
+    })
+    revalidatePath(`/customers/${customerId}`)
+    revalidatePath('/customers')
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
 
 export async function deleteCustomer(customerId: string): Promise<{ error?: string }> {
   const orgId = await getOrgId()
   if (!orgId) return { error: '組織が見つかりません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin
-    .from('customers')
-    .delete()
-    .eq('id', customerId)
-    .eq('organization_id', orgId)
-
-  if (error) return { error: error.message }
-  revalidatePath('/customers')
-  return {}
+  try {
+    const db = getDbFromContext()
+    await dbDeleteCustomer(db, orgId, customerId)
+    revalidatePath('/customers')
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
 
 export async function addTagToCustomer(
   customerId: string,
   tagId: string
 ): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: '未認証' }
+  const userId = await getUserId()
+  if (!userId) return { error: '未認証' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin
-    .from('customer_tags')
-    .insert({ customer_id: customerId, tag_id: tagId, added_by: user.id })
-
-  if (error && error.code !== '23505') return { error: error.message }
-  revalidatePath(`/customers/${customerId}`)
-  return {}
+  try {
+    const db = getDbFromContext()
+    await addCustomerTag(db, customerId, tagId, userId)
+    revalidatePath(`/customers/${customerId}`)
+    return {}
+  } catch (e: any) {
+    // Ignore duplicate key (already tagged)
+    if (e.message?.includes('UNIQUE constraint')) return {}
+    return { error: e.message }
+  }
 }
 
 export async function removeTagFromCustomer(
   customerId: string,
   tagId: string
 ): Promise<{ error?: string }> {
-  const admin = await createAdminClient()
-  const { error } = await admin
-    .from('customer_tags')
-    .delete()
-    .eq('customer_id', customerId)
-    .eq('tag_id', tagId)
-
-  if (error) return { error: error.message }
-  revalidatePath(`/customers/${customerId}`)
-  return {}
+  try {
+    const db = getDbFromContext()
+    await removeCustomerTag(db, customerId, tagId)
+    revalidatePath(`/customers/${customerId}`)
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
 
 export async function createTag(name: string, color: string): Promise<{ error?: string }> {
   const orgId = await getOrgId()
   if (!orgId) return { error: '組織が見つかりません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin
-    .from('tags')
-    .insert({ organization_id: orgId, name: name.trim(), color })
-
-  if (error) return { error: error.message }
-  revalidatePath('/customers/tags')
-  return {}
+  try {
+    const db = getDbFromContext()
+    await dbCreateTag(db, { organizationId: orgId, name: name.trim(), color })
+    revalidatePath('/customers/tags')
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
 
 export async function deleteTag(tagId: string): Promise<{ error?: string }> {
-  const admin = await createAdminClient()
-  const { error } = await admin.from('tags').delete().eq('id', tagId)
-  if (error) return { error: error.message }
-  revalidatePath('/customers/tags')
-  revalidatePath('/customers')
-  return {}
+  const orgId = await getOrgId()
+  if (!orgId) return { error: '組織が見つかりません' }
+
+  try {
+    const db = getDbFromContext()
+    await dbDeleteTag(db, orgId, tagId)
+    revalidatePath('/customers/tags')
+    revalidatePath('/customers')
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
 }
