@@ -31,15 +31,30 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
       <div className="max-w-2xl mx-auto">
         {/* ヘッダー: サムネイル + タイトル */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-          {event.thumbnailUrl && (
-            <div className="w-full aspect-video bg-gray-100">
-              <img
-                src={event.thumbnailUrl}
-                alt={event.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          {(() => {
+            const images = (event.imageUrls as string[] | null)?.length
+              ? (event.imageUrls as string[])
+              : event.thumbnailUrl
+                ? [event.thumbnailUrl]
+                : [];
+            if (images.length === 0) return null;
+            if (images.length === 1) {
+              return (
+                <div className="w-full aspect-video bg-gray-100">
+                  <img src={images[0]} alt={event.title} className="w-full h-full object-cover" />
+                </div>
+              );
+            }
+            return (
+              <div className="grid grid-cols-3 gap-1">
+                {images.map((url, i) => (
+                  <div key={i} className={`bg-gray-100 ${i === 0 ? "col-span-3 aspect-video" : "aspect-video"}`}>
+                    <img src={url} alt={`${event.title} ${i + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           <div className="p-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">{event.title}</h1>
 

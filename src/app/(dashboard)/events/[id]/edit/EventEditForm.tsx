@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, Save, ImagePlus, X } from "lucide-react";
 import { updateEventAction } from "./actions";
 
+const MAX_IMAGES = 3;
+
 const eventTypes = [
   { value: "seminar", label: "セミナー" },
   { value: "webinar", label: "ウェビナー" },
@@ -28,13 +30,20 @@ type EventData = {
   status: string;
   visibility: string;
   thumbnailUrl: string | null;
+  imageUrls: string[];
 };
 
 export default function EventEditForm({ event }: { event: EventData }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState(event.thumbnailUrl || "");
+  const [imageUrls, setImageUrls] = useState<string[]>(
+    event.imageUrls.length > 0
+      ? event.imageUrls
+      : event.thumbnailUrl
+        ? [event.thumbnailUrl]
+        : []
+  );
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +64,7 @@ export default function EventEditForm({ event }: { event: EventData }) {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (imageUrls.length >= MAX_IMAGES) return;
     setUploading(true);
     setError("");
     try {
@@ -63,13 +73,17 @@ export default function EventEditForm({ event }: { event: EventData }) {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "アップロードに失敗しました");
-      setThumbnailUrl(`/api/images/${data.key}`);
+      setImageUrls((prev) => [...prev, `/api/images/${data.key}`]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "アップロードに失敗しました");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImageUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,7 +99,8 @@ export default function EventEditForm({ event }: { event: EventData }) {
 
     const result = await updateEventAction(event.id, {
       ...form,
-      thumbnail_url: thumbnailUrl || "",
+      thumbnail_url: imageUrls[0] || "",
+      image_urls: imageUrls,
     });
 
     if (result.error) {
@@ -140,35 +155,47 @@ export default function EventEditForm({ event }: { event: EventData }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">イベント画像</label>
-          {thumbnailUrl ? (
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
-              <img src={thumbnailUrl} alt="イベント画像" className="w-full h-full object-cover" />
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            イベント画像（最大{MAX_IMAGES}枚）
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            {imageUrls.map((url, index) => (
+              <div key={index} className="relative aspect-video rounded-lg overflow-hidden border border-gray-200">
+                <img src={url} alt={`イベント画像 ${index + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  className="absolute top-1.5 right-1.5 p-1 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+                {index === 0 && (
+                  <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded">
+                    メイン
+                  </span>
+                )}
+              </div>
+            ))}
+            {imageUrls.length < MAX_IMAGES && (
               <button
                 type="button"
-                onClick={() => setThumbnailUrl("")}
-                className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="aspect-video rounded-lg border-2 border-dashed border-gray-300 hover:border-indigo-400 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-indigo-500 transition-colors"
               >
-                <X className="w-4 h-4" />
+                {uploading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <>
+                    <ImagePlus className="w-6 h-6" />
+                    <span className="text-xs">追加</span>
+                  </>
+                )}
               </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-full aspect-video rounded-lg border-2 border-dashed border-gray-300 hover:border-indigo-400 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-indigo-500 transition-colors"
-            >
-              {uploading ? (
-                <Loader2 className="w-8 h-8 animate-spin" />
-              ) : (
-                <>
-                  <ImagePlus className="w-8 h-8" />
-                  <span className="text-sm">クリックして画像をアップロード</span>
-                  <span className="text-xs text-gray-300">JPEG, PNG, WebP, GIF（5MB以下）</span>
-                </>
-              )}
-            </button>
+            )}
+          </div>
+          {imageUrls.length === 0 && (
+            <p className="mt-1.5 text-xs text-gray-400">JPEG, PNG, WebP, GIF（5MB以下）</p>
           )}
           <input
             ref={fileInputRef}

@@ -113,6 +113,7 @@ export const events = sqliteTable("events", {
   registrationCount: integer("registration_count").notNull().default(0),
   visibility: text("visibility").notNull().default("draft"),
   thumbnailUrl: text("thumbnail_url"),
+  imageUrls: text("image_urls", { mode: "json" }).$type<string[]>().default([]),
   tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
   customFields: text("custom_fields", { mode: "json" }).notNull().$type<unknown[]>().default([]),
   settings: text("settings", { mode: "json" }).notNull().$type<Record<string, unknown>>().default({}),

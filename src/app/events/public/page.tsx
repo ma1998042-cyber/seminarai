@@ -38,19 +38,18 @@ export default async function PublicEventsPage() {
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                 >
                   {/* サムネイル */}
-                  {event.thumbnailUrl ? (
-                    <div className="w-full aspect-video bg-gray-100">
-                      <img
-                        src={event.thumbnailUrl}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-video bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
-                      <CalendarDays className="w-12 h-12 text-indigo-200" />
-                    </div>
-                  )}
+                  {(() => {
+                    const thumb = event.thumbnailUrl || ((event.imageUrls as string[] | null)?.[0]);
+                    return thumb ? (
+                      <div className="w-full aspect-video bg-gray-100">
+                        <img src={thumb} alt={event.title} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-full aspect-video bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
+                        <CalendarDays className="w-12 h-12 text-indigo-200" />
+                      </div>
+                    );
+                  })()}
 
                   <div className="p-5">
                     <h2 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2">{event.title}</h2>

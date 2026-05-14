@@ -37,6 +37,7 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
         status: event.status,
         visibility: event.visibility,
         thumbnailUrl: event.thumbnailUrl,
+        imageUrls: (event.imageUrls as string[]) || [],
       }}
     />
   );

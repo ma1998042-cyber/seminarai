@@ -37,6 +37,7 @@ export async function createEvent(
     onlineUrl?: string;
     capacity?: number;
     thumbnailUrl?: string;
+    imageUrls?: string[];
     tags?: string[];
     customFields?: unknown[];
     settings?: Record<string, unknown>;
@@ -65,6 +66,7 @@ export async function updateEvent(
     capacity: number | null;
     registrationCount: number;
     thumbnailUrl: string | null;
+    imageUrls: string[];
     tags: string[];
     customFields: unknown[];
     settings: Record<string, unknown>;
