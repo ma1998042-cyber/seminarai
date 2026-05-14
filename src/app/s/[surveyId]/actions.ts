@@ -3,7 +3,8 @@
 import { eq, sql } from 'drizzle-orm'
 import { getDbFromContext } from '@/lib/db'
 import { createSurveyResponse, incrementSurveyResponseCount } from '@/lib/db/queries/surveys'
-import { surveys, customers, eventRegistrations, events } from '@/lib/db/schema'
+import { upsertCustomerByEmail } from '@/lib/db/queries/customers'
+import { surveys, eventRegistrations, events } from '@/lib/db/schema'
 
 export async function submitSurveyResponse(
   surveyId: string,
@@ -15,9 +16,28 @@ export async function submitSurveyResponse(
   const db = getDbFromContext()
 
   try {
+    // アンケート情報を取得
+    const survey = await db.query.surveys.findFirst({
+      where: eq(surveys.id, surveyId),
+      columns: { category: true, eventId: true, organizationId: true },
+    })
+
+    // respondentEmail があれば全カテゴリで顧客レコードを upsert
+    let customerId: string | undefined
+    if (respondentEmail) {
+      const customer = await upsertCustomerByEmail(db, organizationId, {
+        email: respondentEmail,
+        fullName: respondentName || undefined,
+        source: 'survey',
+        sourceEventId: survey?.eventId || undefined,
+      })
+      customerId = customer.id
+    }
+
     await createSurveyResponse(db, {
       surveyId,
       organizationId,
+      customerId,
       respondentName: respondentName || undefined,
       respondentEmail: respondentEmail || undefined,
       answers,
@@ -26,53 +46,13 @@ export async function submitSurveyResponse(
     // response_count をインクリメント
     await incrementSurveyResponseCount(db, surveyId)
 
-    // category=registration の場合、参加者登録を行う
-    const survey = await db.query.surveys.findFirst({
-      where: eq(surveys.id, surveyId),
-      columns: { category: true, eventId: true, organizationId: true },
-    })
-
+    // category=registration かつ eventId がある場合、参加者登録を行う
     if (
       survey?.category === 'registration' &&
       survey.eventId &&
-      respondentEmail
+      respondentEmail &&
+      customerId
     ) {
-      // customers テーブルに upsert
-      const existingCustomer = await db.query.customers.findFirst({
-        where: (c, { and, eq }) =>
-          and(eq(c.organizationId, survey.organizationId), eq(c.email, respondentEmail)),
-        columns: { id: true },
-      })
-
-      let customerId: string
-      if (existingCustomer) {
-        customerId = existingCustomer.id
-        // 名前があれば更新
-        if (respondentName) {
-          await db
-            .update(customers)
-            .set({
-              fullName: respondentName,
-              lastActivityAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            })
-            .where(eq(customers.id, customerId))
-        }
-      } else {
-        const [newCustomer] = await db
-          .insert(customers)
-          .values({
-            organizationId: survey.organizationId,
-            email: respondentEmail,
-            fullName: respondentName || undefined,
-            source: 'survey',
-            sourceEventId: survey.eventId,
-            lastActivityAt: new Date().toISOString(),
-          })
-          .returning()
-        customerId = newCustomer.id
-      }
-
       // event_registrations テーブルに upsert
       const existingReg = await db.query.eventRegistrations.findFirst({
         where: (r, { and, eq }) =>
