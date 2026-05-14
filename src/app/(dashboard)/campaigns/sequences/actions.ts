@@ -1,17 +1,22 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+import { eq, and } from 'drizzle-orm'
+import { getAuth } from '@/lib/auth'
+import { getDbFromContext } from '@/lib/db'
+import { getUserProfile } from '@/lib/db/queries/users'
+import { stepCampaigns, stepCampaignSteps, stepCampaignEnrollments } from '@/lib/db/schema'
 
-async function getUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+async function getAuthUser() {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  return session?.user ?? null
 }
 
 async function getOrgId(userId: string) {
-  const admin = await createAdminClient()
-  const { data } = await admin.from('user_profiles').select('current_organization_id').eq('id', userId).single()
-  return data?.current_organization_id ?? null
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, userId)
+  return profile?.currentOrganizationId ?? null
 }
 
 export async function saveSequence(data: {
@@ -22,42 +27,48 @@ export async function saveSequence(data: {
   trigger_event_id?: string
   trigger_tag_id?: string
 }) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
   const orgId = await getOrgId(user.id)
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
   const payload = {
     name: data.name,
     description: data.description || null,
-    trigger_type: data.trigger_type,
-    trigger_event_id: data.trigger_event_id || null,
-    trigger_tag_id: data.trigger_tag_id || null,
+    triggerType: data.trigger_type,
+    triggerEventId: data.trigger_event_id || null,
+    triggerTagId: data.trigger_tag_id || null,
   }
 
   if (data.id) {
-    const { error } = await admin.from('step_campaigns').update(payload).eq('id', data.id).eq('organization_id', orgId)
-    if (error) return { error: error.message }
+    await db.update(stepCampaigns).set({
+      ...payload,
+      updatedAt: new Date().toISOString(),
+    }).where(and(eq(stepCampaigns.id, data.id), eq(stepCampaigns.organizationId, orgId)))
     return { id: data.id }
   } else {
-    const { data: seq, error } = await admin.from('step_campaigns').insert({
-      ...payload, organization_id: orgId, created_by: user.id,
-    }).select('id').single()
-    if (error || !seq) return { error: error?.message ?? '作成に失敗しました' }
+    const [seq] = await db.insert(stepCampaigns).values({
+      ...payload,
+      organizationId: orgId,
+      createdBy: user.id,
+    }).returning()
+    if (!seq) return { error: '作成に失敗しました' }
     return { id: seq.id }
   }
 }
 
 export async function updateSequenceStatus(id: string, status: string) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
   const orgId = await getOrgId(user.id)
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin.from('step_campaigns').update({ status }).eq('id', id).eq('organization_id', orgId)
-  if (error) return { error: error.message }
+  const db = getDbFromContext()
+  await db.update(stepCampaigns).set({
+    status,
+    updatedAt: new Date().toISOString(),
+  }).where(and(eq(stepCampaigns.id, id), eq(stepCampaigns.organizationId, orgId)))
   return {}
 }
 
@@ -71,56 +82,105 @@ export async function saveStep(data: {
   preview_text?: string
   body_html: string
 }) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
   const payload = {
-    step_campaign_id: data.step_campaign_id,
-    step_number: data.step_number,
+    stepCampaignId: data.step_campaign_id,
+    stepNumber: data.step_number,
     name: data.name || null,
-    delay_days: data.delay_days,
+    delayDays: data.delay_days,
     subject: data.subject,
-    preview_text: data.preview_text || null,
-    body_html: data.body_html,
+    previewText: data.preview_text || null,
+    bodyHtml: data.body_html,
   }
 
   if (data.id) {
-    const { error } = await admin.from('step_campaign_steps').update(payload).eq('id', data.id)
-    if (error) return { error: error.message }
+    await db.update(stepCampaignSteps).set(payload).where(eq(stepCampaignSteps.id, data.id))
     return { id: data.id }
   } else {
-    const { data: step, error } = await admin.from('step_campaign_steps').insert(payload).select('id').single()
-    if (error || !step) return { error: error?.message ?? '作成に失敗しました' }
+    const [step] = await db.insert(stepCampaignSteps).values(payload).returning()
+    if (!step) return { error: '作成に失敗しました' }
     return { id: step.id }
   }
 }
 
 export async function deleteStep(id: string) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
-  const { error } = await admin.from('step_campaign_steps').delete().eq('id', id)
-  if (error) return { error: error.message }
+  const db = getDbFromContext()
+  await db.delete(stepCampaignSteps).where(eq(stepCampaignSteps.id, id))
   return {}
 }
 
 export async function enrollCustomers(sequenceId: string, customerIds: string[]) {
-  const user = await getUser()
+  const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
   const orgId = await getOrgId(user.id)
   if (!orgId) return { error: '組織が設定されていません' }
 
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
   const rows = customerIds.map(cid => ({
-    step_campaign_id: sequenceId,
-    customer_id: cid,
-    organization_id: orgId,
+    stepCampaignId: sequenceId,
+    customerId: cid,
+    organizationId: orgId,
     status: 'active',
-    current_step: 0,
+    currentStep: 0,
   }))
-  const { error } = await admin.from('step_campaign_enrollments').upsert(rows, { onConflict: 'step_campaign_id,customer_id', ignoreDuplicates: true })
-  if (error) return { error: error.message }
+
+  await db.insert(stepCampaignEnrollments).values(rows).onConflictDoNothing({
+    target: [stepCampaignEnrollments.stepCampaignId, stepCampaignEnrollments.customerId],
+  })
   return { enrolled: rows.length }
+}
+
+export async function getSequenceData(id: string): Promise<{
+  sequence: {
+    id: string
+    name: string
+    description: string | null
+    status: string
+    triggerType: string
+  } | null
+  steps: {
+    id: string
+    stepNumber: number
+    name: string | null
+    delayDays: number
+    subject: string
+    previewText: string | null
+    bodyHtml: string
+  }[]
+}> {
+  const db = getDbFromContext()
+  const sequence = await db.query.stepCampaigns.findFirst({
+    where: eq(stepCampaigns.id, id),
+  })
+  if (!sequence) return { sequence: null, steps: [] }
+
+  const steps = await db.query.stepCampaignSteps.findMany({
+    where: eq(stepCampaignSteps.stepCampaignId, id),
+    orderBy: (s, { asc }) => [asc(s.stepNumber)],
+  })
+
+  return {
+    sequence: {
+      id: sequence.id,
+      name: sequence.name,
+      description: sequence.description,
+      status: sequence.status,
+      triggerType: sequence.triggerType,
+    },
+    steps: steps.map(s => ({
+      id: s.id,
+      stepNumber: s.stepNumber,
+      name: s.name,
+      delayDays: s.delayDays,
+      subject: s.subject,
+      previewText: s.previewText,
+      bodyHtml: s.bodyHtml,
+    })),
+  }
 }

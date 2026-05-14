@@ -1,27 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Loader2, Play, Pause, Mail, Clock } from "lucide-react";
-import { saveStep, deleteStep, updateSequenceStatus } from "../actions";
-import { createClient } from "@/lib/supabase/client";
+import { saveStep, deleteStep, updateSequenceStatus, getSequenceData } from "../actions";
 
 type Step = {
   id: string;
-  step_number: number;
-  name?: string;
-  delay_days: number;
+  stepNumber: number;
+  name: string | null;
+  delayDays: number;
   subject: string;
-  preview_text?: string;
-  body_html: string;
+  previewText: string | null;
+  bodyHtml: string;
 };
 
 type Sequence = {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   status: string;
-  trigger_type: string;
+  triggerType: string;
 };
 
 const triggerLabels: Record<string, string> = {
@@ -38,7 +37,6 @@ const emptyStep = { step_number: 1, delay_days: 0, subject: "", body_html: "", n
 
 export default function SequenceDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,18 +46,15 @@ export default function SequenceDetailPage() {
   const [addingStep, setAddingStep] = useState(false);
   const [newStep, setNewStep] = useState({ ...emptyStep });
 
+  const fetchData = async () => {
+    const data = await getSequenceData(id);
+    setSequence(data.sequence);
+    setSteps(data.steps);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetch = async () => {
-      const supabase = createClient();
-      const [{ data: seq }, { data: st }] = await Promise.all([
-        supabase.from("step_campaigns").select("*").eq("id", id).single(),
-        supabase.from("step_campaign_steps").select("*").eq("step_campaign_id", id).order("step_number"),
-      ]);
-      setSequence(seq);
-      setSteps(st ?? []);
-      setLoading(false);
-    };
-    fetch();
+    fetchData();
   }, [id]);
 
   const handleAddStep = async () => {
@@ -67,12 +62,11 @@ export default function SequenceDetailPage() {
     setSaving(true);
     setError("");
     const stepNum = steps.length + 1;
-    const result = await saveStep({ step_campaign_id: id, step_number: stepNum, ...newStep });
+    const { step_number: _, ...restNewStep } = newStep;
+    const result = await saveStep({ step_campaign_id: id, step_number: stepNum, ...restNewStep });
     setSaving(false);
     if (result.error) { setError(result.error); return; }
-    const supabase = createClient();
-    const { data: st } = await supabase.from("step_campaign_steps").select("*").eq("step_campaign_id", id).order("step_number");
-    setSteps(st ?? []);
+    await fetchData();
     setNewStep({ ...emptyStep });
     setAddingStep(false);
   };
@@ -108,7 +102,7 @@ export default function SequenceDetailPage() {
               {statusLabels[sequence.status] ?? sequence.status}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">トリガー: {triggerLabels[sequence.trigger_type] ?? sequence.trigger_type}</p>
+          <p className="text-sm text-gray-500 mt-0.5">トリガー: {triggerLabels[sequence.triggerType] ?? sequence.triggerType}</p>
         </div>
         <button
           onClick={handleToggleStatus}
@@ -134,20 +128,20 @@ export default function SequenceDetailPage() {
           </div>
         )}
 
-        {steps.map((step, i) => (
+        {steps.map((step) => (
           <div key={step.id} className="bg-white rounded-xl border border-gray-100">
             <button
               className="w-full flex items-center gap-3 p-4 text-left"
               onClick={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
             >
               <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600 flex-shrink-0">
-                {step.step_number}
+                {step.stepNumber}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{step.subject}</p>
                 <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                   <Clock className="w-3 h-3" />
-                  {step.delay_days === 0 ? "登録直後" : `登録から${step.delay_days}日後`}
+                  {step.delayDays === 0 ? "登録直後" : `登録から${step.delayDays}日後`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -166,7 +160,7 @@ export default function SequenceDetailPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">送信タイミング（日）</label>
-                    <p className="text-sm text-gray-800">{step.delay_days === 0 ? "登録直後（0日後）" : `${step.delay_days}日後`}</p>
+                    <p className="text-sm text-gray-800">{step.delayDays === 0 ? "登録直後（0日後）" : `${step.delayDays}日後`}</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">件名</label>
@@ -175,7 +169,7 @@ export default function SequenceDetailPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">本文プレビュー</label>
-                  <p className="text-sm text-gray-600 line-clamp-3 bg-gray-50 rounded p-2">{step.body_html.replace(/<[^>]*>/g, "")}</p>
+                  <p className="text-sm text-gray-600 line-clamp-3 bg-gray-50 rounded p-2">{step.bodyHtml.replace(/<[^>]*>/g, "")}</p>
                 </div>
               </div>
             )}

@@ -1,25 +1,34 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, GitBranch, Play, Pause, ExternalLink } from "lucide-react";
+import { Plus, GitBranch, ExternalLink } from "lucide-react";
 import CampaignNav from "@/components/campaigns/CampaignNav";
 import { formatDate, cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { eq } from "drizzle-orm";
+import { stepCampaigns } from "@/lib/db/schema";
 
 export default async function SequencesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin.from("user_profiles").select("current_organization_id").eq("id", user.id).single();
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const { data: sequences } = await admin
-    .from("step_campaigns")
-    .select("*, step_campaign_steps(count), step_campaign_enrollments(count)")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const sequences = await db.query.stepCampaigns.findMany({
+    where: eq(stepCampaigns.organizationId, orgId),
+    with: {
+      steps: true,
+      enrollments: true,
+    },
+    orderBy: (s, { desc }) => [desc(s.createdAt)],
+  });
 
   const statusColors: Record<string, string> = {
     draft: "bg-gray-100 text-gray-600",
@@ -54,8 +63,8 @@ export default async function SequencesPage() {
       {sequences && sequences.length > 0 ? (
         <div className="space-y-3">
           {sequences.map((seq) => {
-            const stepCount = (seq.step_campaign_steps as any)?.[0]?.count ?? 0;
-            const enrollCount = (seq.step_campaign_enrollments as any)?.[0]?.count ?? 0;
+            const stepCount = seq.steps?.length ?? 0;
+            const enrollCount = seq.enrollments?.length ?? 0;
             return (
               <Link
                 key={seq.id}
@@ -73,11 +82,11 @@ export default async function SequencesPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span>トリガー: {triggerLabels[seq.trigger_type] ?? seq.trigger_type}</span>
+                    <span>トリガー: {triggerLabels[seq.triggerType] ?? seq.triggerType}</span>
                     <span>{stepCount}ステップ</span>
                     <span>{enrollCount}名登録中</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">{formatDate(seq.created_at)}</p>
+                  <p className="text-xs text-gray-400 mt-1">{formatDate(seq.createdAt)}</p>
                 </div>
                 <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
               </Link>
