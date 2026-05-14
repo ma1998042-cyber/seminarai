@@ -4,6 +4,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { userProfiles } from "@/lib/db/schema";
+import * as authSchema from "@/lib/db/auth-schema";
 
 /**
  * Better Auth サーバーインスタンスを取得する。
@@ -19,6 +20,7 @@ export function getAuth() {
     baseURL: env.BETTER_AUTH_URL || undefined,
     database: drizzleAdapter(db, {
       provider: "sqlite",
+      schema: authSchema,
     }),
     emailAndPassword: {
       enabled: true,
