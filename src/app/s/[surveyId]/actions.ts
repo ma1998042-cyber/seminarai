@@ -1,6 +1,7 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { getDbFromContext } from '@/lib/db'
+import { createSurveyResponse, incrementSurveyResponseCount } from '@/lib/db/queries/surveys'
 
 export async function submitSurveyResponse(
   surveyId: string,
@@ -9,30 +10,22 @@ export async function submitSurveyResponse(
   respondentEmail: string,
   answers: Record<string, unknown>
 ): Promise<{ error?: string }> {
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
 
-  const { error } = await admin.from('survey_responses').insert({
-    survey_id: surveyId,
-    organization_id: organizationId,
-    respondent_name: respondentName || null,
-    respondent_email: respondentEmail || null,
-    answers,
-    submitted_at: new Date().toISOString(),
-  })
+  try {
+    await createSurveyResponse(db, {
+      surveyId,
+      organizationId,
+      respondentName: respondentName || undefined,
+      respondentEmail: respondentEmail || undefined,
+      answers,
+    })
 
-  if (error) return { error: '送信に失敗しました。もう一度お試しください' }
+    // response_count をインクリメント
+    await incrementSurveyResponseCount(db, surveyId)
 
-  // response_count をインクリメント
-  const { data: survey } = await admin
-    .from('surveys')
-    .select('response_count')
-    .eq('id', surveyId)
-    .single()
-
-  await admin
-    .from('surveys')
-    .update({ response_count: (survey?.response_count ?? 0) + 1 })
-    .eq('id', surveyId)
-
-  return {}
+    return {}
+  } catch {
+    return { error: '送信に失敗しました。もう一度お試しください' }
+  }
 }

@@ -1,43 +1,31 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, MessageSquare, Copy, ExternalLink, BarChart3 } from "lucide-react";
 import { formatDateTime, cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getSurveyById, getSurveyQuestions, getSurveyResponses } from "@/lib/db/queries/surveys";
 
 export default async function SurveyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
 
-  const { data: survey } = await admin
-    .from("surveys")
-    .select("*, events(title)")
-    .eq("id", id)
-    .single();
+  const survey = await getSurveyById(db, id);
 
   if (!survey) notFound();
-  if (profile?.current_organization_id !== survey.organization_id) redirect("/surveys");
+  if (profile?.currentOrganizationId !== survey.organizationId) redirect("/surveys");
 
-  const { data: questions } = await admin
-    .from("survey_questions")
-    .select("*")
-    .eq("survey_id", survey.id)
-    .order("sort_order");
+  const questions = survey.questions;
 
-  const { data: responses } = await admin
-    .from("survey_responses")
-    .select("*")
-    .eq("survey_id", survey.id)
-    .order("submitted_at", { ascending: false })
-    .limit(20);
+  const responses = await getSurveyResponses(db, survey.id);
 
   const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${survey.id}`;
 
@@ -78,8 +66,8 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
                 {statusLabels[survey.status] || survey.status}
               </span>
             </div>
-            {(survey as any).events && (
-              <p className="text-sm text-gray-500">📅 {(survey as any).events.title}</p>
+            {survey.eventId && (
+              <p className="text-sm text-gray-500">イベント紐づけ済み</p>
             )}
           </div>
         </div>
@@ -123,12 +111,12 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-sm font-medium text-gray-800">{q.title}</p>
-                      {q.is_required && (
+                      {q.isRequired && (
                         <span className="text-xs text-red-500">必須</span>
                       )}
                     </div>
                     <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">
-                      {questionTypeLabels[q.question_type] || q.question_type}
+                      {questionTypeLabels[q.questionType] || q.questionType}
                     </span>
                     {q.options && Array.isArray(q.options) && (q.options as string[]).length > 0 && (
                       <div className="mt-2 space-y-1">
@@ -160,9 +148,9 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
                   <div key={response.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100">
                     <div>
                       <p className="text-sm font-medium text-gray-700">
-                        {response.respondent_name || response.respondent_email || "匿名"}
+                        {response.respondentName || response.respondentEmail || "匿名"}
                       </p>
-                      <p className="text-xs text-gray-400">{formatDateTime(response.submitted_at)}</p>
+                      <p className="text-xs text-gray-400">{formatDateTime(response.submittedAt)}</p>
                     </div>
                     <Link
                       href={`/surveys/${survey.id}/responses/${response.id}`}
@@ -190,7 +178,7 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
                 <BarChart3 className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{survey.response_count}</p>
+                <p className="text-2xl font-bold text-gray-900">{survey.responseCount}</p>
                 <p className="text-sm text-gray-500">回答数</p>
               </div>
             </div>
@@ -205,12 +193,12 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">作成日</span>
-                <span className="text-gray-700">{formatDateTime(survey.created_at)}</span>
+                <span className="text-gray-700">{formatDateTime(survey.createdAt)}</span>
               </div>
-              {survey.published_at && (
+              {survey.publishedAt && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">公開日</span>
-                  <span className="text-gray-700">{formatDateTime(survey.published_at)}</span>
+                  <span className="text-gray-700">{formatDateTime(survey.publishedAt)}</span>
                 </div>
               )}
             </div>

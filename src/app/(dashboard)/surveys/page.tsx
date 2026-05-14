@@ -1,8 +1,14 @@
-import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
+import { eq, and, like, desc } from "drizzle-orm";
 import { Plus, ClipboardList, MessageSquare, ExternalLink, Search } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getEvents } from "@/lib/db/queries/events";
+import { surveys as surveysTable } from "@/lib/db/schema";
 import SurveySearch from "./SurveySearch";
 
 export default async function SurveysPage({
@@ -12,32 +18,27 @@ export default async function SurveysPage({
 }) {
   const { q, event, status } = await searchParams;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin.from("user_profiles").select("current_organization_id").eq("id", user.id).single();
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/dashboard");
 
-  let query = admin
-    .from("surveys")
-    .select("*, events(id, title)")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const conditions = [eq(surveysTable.organizationId, orgId)];
+  if (q) conditions.push(like(surveysTable.title, `%${q}%`));
+  if (event) conditions.push(eq(surveysTable.eventId, event));
+  if (status) conditions.push(eq(surveysTable.status, status));
 
-  if (q) query = query.ilike("title", `%${q}%`);
-  if (event) query = query.eq("event_id", event);
-  if (status) query = query.eq("status", status);
+  const surveys = await db.query.surveys.findMany({
+    where: and(...conditions),
+    orderBy: (s, { desc: d }) => [d(s.createdAt)],
+  });
 
-  const { data: surveys } = await query;
-
-  const { data: events } = await admin
-    .from("events")
-    .select("id, title")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const eventsList = await getEvents(db, orgId);
 
   const statusColors: Record<string, string> = {
     draft: "bg-gray-100 text-gray-600",
@@ -65,7 +66,7 @@ export default async function SurveysPage({
         </Link>
       </div>
 
-      <SurveySearch events={events ?? []} currentQ={q} currentEvent={event} currentStatus={status} />
+      <SurveySearch events={eventsList.map(e => ({ id: e.id, title: e.title }))} currentQ={q} currentEvent={event} currentStatus={status} />
 
       {surveys && surveys.length > 0 ? (
         <div className="space-y-3">
@@ -83,9 +84,8 @@ export default async function SurveysPage({
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-400">
-                    {(survey as any).events && <span>📅 {(survey as any).events.title}</span>}
-                    <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{survey.response_count}件の回答</span>
-                    <span>{formatDate(survey.created_at)}</span>
+                    <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{survey.responseCount}件の回答</span>
+                    <span>{formatDate(survey.createdAt)}</span>
                   </div>
                 </div>
               </Link>

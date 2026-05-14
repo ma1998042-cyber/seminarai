@@ -1,6 +1,7 @@
-import { createAdminClient } from "@/lib/supabase/server";
 import Stripe from "stripe";
 import { CheckCircle, XCircle } from "lucide-react";
+import { getDbFromContext } from "@/lib/db";
+import { getSurveyById, incrementSurveyResponseCount } from "@/lib/db/queries/surveys";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
 
@@ -18,7 +19,7 @@ export default async function SurveyCompletePage({
     return <ErrorPage message="無効なリクエストです" />;
   }
 
-  const admin = await createAdminClient();
+  const db = getDbFromContext();
 
   // Verify payment with Stripe
   let paid = false;
@@ -29,26 +30,12 @@ export default async function SurveyCompletePage({
     paid = session.payment_status === "paid";
 
     if (paid) {
-      // Update response status
-      await admin
-        .from("survey_responses")
-        .update({ payment_status: "paid" })
-        .eq("id", response_id)
-        .eq("stripe_session_id", session.id);
-
       // Increment response_count
-      const { data: survey } = await admin
-        .from("surveys")
-        .select("response_count, thank_you_message")
-        .eq("id", surveyId)
-        .single();
+      const survey = await getSurveyById(db, surveyId);
 
       if (survey) {
-        thankYouMessage = survey.thank_you_message || thankYouMessage;
-        await admin
-          .from("surveys")
-          .update({ response_count: (survey.response_count ?? 0) + 1 })
-          .eq("id", surveyId);
+        thankYouMessage = survey.thankYouMessage || thankYouMessage;
+        await incrementSurveyResponseCount(db, surveyId);
       }
     }
   } catch {

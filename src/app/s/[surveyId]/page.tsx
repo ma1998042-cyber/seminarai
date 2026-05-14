@@ -1,16 +1,13 @@
-import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { getDbFromContext } from "@/lib/db";
+import { getSurveyById, getSurveyQuestions } from "@/lib/db/queries/surveys";
 import SurveyForm from "./SurveyForm";
 
 export default async function PublicSurveyPage({ params }: { params: Promise<{ surveyId: string }> }) {
   const { surveyId } = await params;
-  const admin = await createAdminClient();
+  const db = getDbFromContext();
 
-  const { data: survey } = await admin
-    .from("surveys")
-    .select("id, organization_id, title, description, thank_you_message, status, is_anonymous, payment_enabled, payment_amount")
-    .eq("id", surveyId)
-    .single();
+  const survey = await getSurveyById(db, surveyId);
 
   if (!survey || survey.status !== "active") {
     return (
@@ -26,23 +23,26 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
     );
   }
 
-  const { data: questions } = await admin
-    .from("survey_questions")
-    .select("id, question_type, title, description, is_required, options")
-    .eq("survey_id", surveyId)
-    .order("sort_order");
+  const questions = survey.questions;
 
   return (
     <SurveyForm
       survey={{
-        ...survey,
-        is_anonymous: survey.is_anonymous ?? false,
-        payment_enabled: survey.payment_enabled ?? false,
-        payment_amount: survey.payment_amount ?? 0,
+        id: survey.id,
+        organization_id: survey.organizationId,
+        title: survey.title,
+        description: survey.description ?? null,
+        thank_you_message: survey.thankYouMessage ?? null,
+        is_anonymous: survey.isAnonymous ?? false,
+        payment_enabled: false,
+        payment_amount: 0,
       }}
       questions={(questions ?? []).map((q) => ({
-        ...q,
+        id: q.id,
+        question_type: q.questionType,
+        title: q.title,
         description: q.description ?? null,
+        is_required: q.isRequired,
         options: Array.isArray(q.options) ? (q.options as string[]) : null,
       }))}
     />

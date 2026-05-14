@@ -1,7 +1,14 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { getAuth } from '@/lib/auth'
+import { getDbFromContext } from '@/lib/db'
+import {
+  updateSurvey as updateSurveyDb,
+  deleteSurveyQuestions,
+  createSurveyQuestions,
+} from '@/lib/db/queries/surveys'
 
 type Question = {
   question_type: string
@@ -21,42 +28,43 @@ export async function updateSurvey(surveyId: string, data: {
   payment_enabled?: boolean
   payment_amount?: number
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
 
-  const { error: surveyErr } = await admin.from('surveys').update({
-    title: data.title,
-    description: data.description || null,
-    thank_you_message: data.thank_you_message || null,
-    status: data.status,
-    published_at: data.status === 'active' ? new Date().toISOString() : undefined,
-    payment_enabled: data.payment_enabled ?? false,
-    payment_amount: data.payment_amount ?? 0,
-  }).eq('id', surveyId)
+  try {
+    await updateSurveyDb(db, surveyId, {
+      title: data.title,
+      description: data.description || null,
+      thankYouMessage: data.thank_you_message || null,
+      status: data.status,
+      publishedAt: data.status === 'active' ? new Date().toISOString() : null,
+    })
 
-  if (surveyErr) return { error: surveyErr.message }
+    // 既存の設問を削除して再挿入
+    await deleteSurveyQuestions(db, surveyId)
 
-  // 既存の設問を削除して再挿入
-  await admin.from('survey_questions').delete().eq('survey_id', surveyId)
+    if (data.questions.length > 0) {
+      await createSurveyQuestions(
+        db,
+        surveyId,
+        data.questions.map((q, i) => ({
+          sortOrder: i,
+          questionType: q.question_type,
+          title: q.title,
+          description: q.description || undefined,
+          isRequired: q.is_required,
+          options: q.options.length > 0 ? q.options : null,
+        }))
+      )
+    }
 
-  if (data.questions.length > 0) {
-    const { error: qErr } = await admin.from('survey_questions').insert(
-      data.questions.map((q, i) => ({
-        survey_id: surveyId,
-        sort_order: i,
-        question_type: q.question_type,
-        title: q.title,
-        description: q.description || null,
-        is_required: q.is_required,
-        options: q.options.length > 0 ? q.options : null,
-      }))
-    )
-    if (qErr) return { error: qErr.message }
+    revalidatePath(`/surveys/${surveyId}`)
+    return {}
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : '更新に失敗しました' }
   }
-
-  revalidatePath(`/surveys/${surveyId}`)
-  return {}
 }

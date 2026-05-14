@@ -1,5 +1,9 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getEvents } from "@/lib/db/queries/events";
 import NewSurveyForm from "./NewSurveyForm";
 
 export default async function NewSurveyPage({
@@ -9,25 +13,17 @@ export default async function NewSurveyPage({
 }) {
   const { event_id } = await searchParams;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/dashboard");
 
-  const { data: events } = await admin
-    .from("events")
-    .select("id, title")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const eventsList = await getEvents(db, orgId);
 
-  return <NewSurveyForm events={events ?? []} defaultEventId={event_id} />;
+  return <NewSurveyForm events={eventsList.map(e => ({ id: e.id, title: e.title }))} defaultEventId={event_id} />;
 }
