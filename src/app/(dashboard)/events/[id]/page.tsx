@@ -1,8 +1,14 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, Users, ClipboardList, Edit, ExternalLink, MapPin, Globe } from "lucide-react";
 import { formatDateTime, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getEventById, getEventRegistrations } from "@/lib/db/queries/events";
+import { eq, and, or, isNull, ne } from "drizzle-orm";
+import { surveys as surveysTable } from "@/lib/db/schema";
 import LinkSurveyButton from "./LinkSurveyButton";
 
 const statusColors: Record<string, string> = {
@@ -14,46 +20,38 @@ const statusColors: Record<string, string> = {
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const admin = await createAdminClient();
-  const { data: profile } = await admin
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
+  if (!orgId) redirect("/onboarding");
 
-  const { data: event } = await admin
-    .from("events")
-    .select("*")
-    .eq("id", id)
-    .single();
-
+  const event = await getEventById(db, orgId, id);
   if (!event) notFound();
-  if (profile?.current_organization_id !== event.organization_id) redirect("/events");
 
   // Get related surveys
-  const { data: surveys } = await admin
-    .from("surveys")
-    .select("id, title, status, response_count")
-    .eq("event_id", event.id);
+  const surveys = await db.query.surveys.findMany({
+    where: eq(surveysTable.eventId, event.id),
+    columns: { id: true, title: true, status: true, responseCount: true },
+  });
 
   // Surveys not yet linked to this event (for LinkSurveyButton)
-  const { data: unlinkedSurveys } = await admin
-    .from("surveys")
-    .select("id, title")
-    .eq("organization_id", event.organization_id)
-    .or(`event_id.is.null,event_id.neq.${event.id}`)
-    .order("created_at", { ascending: false });
+  const unlinkedSurveys = await db.query.surveys.findMany({
+    where: and(
+      eq(surveysTable.organizationId, orgId),
+      or(isNull(surveysTable.eventId), ne(surveysTable.eventId, event.id)),
+    ),
+    columns: { id: true, title: true },
+    orderBy: (s, { desc }) => [desc(s.createdAt)],
+  });
 
   // Get registrations
-  const { data: registrations, count: regCount } = await admin
-    .from("event_registrations")
-    .select("*", { count: "exact" })
-    .eq("event_id", event.id)
-    .limit(10);
+  const registrations = await getEventRegistrations(db, event.id);
+  const regCount = registrations.length;
 
   const s = statusColors[event.status] || statusColors.draft;
 
@@ -72,7 +70,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 {EVENT_STATUS_LABELS[event.status] || event.status}
               </span>
             </div>
-            <p className="text-sm text-gray-500">{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</p>
+            <p className="text-sm text-gray-500">{EVENT_TYPE_LABELS[event.eventType] || event.eventType}</p>
           </div>
         </div>
         <Link
@@ -95,27 +93,27 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <p className="text-sm text-gray-600 leading-relaxed">{event.description}</p>
               )}
               <div className="grid grid-cols-2 gap-4 text-sm">
-                {event.start_date && (
+                {event.startDate && (
                   <div>
                     <p className="text-gray-400 mb-0.5">開始日時</p>
-                    <p className="font-medium text-gray-700">{formatDateTime(event.start_date)}</p>
+                    <p className="font-medium text-gray-700">{formatDateTime(event.startDate)}</p>
                   </div>
                 )}
-                {event.end_date && (
+                {event.endDate && (
                   <div>
                     <p className="text-gray-400 mb-0.5">終了日時</p>
-                    <p className="font-medium text-gray-700">{formatDateTime(event.end_date)}</p>
+                    <p className="font-medium text-gray-700">{formatDateTime(event.endDate)}</p>
                   </div>
                 )}
               </div>
-              {event.is_online && event.online_url && (
+              {event.isOnline && event.onlineUrl && (
                 <div className="flex items-center gap-2 text-sm">
                   <Globe className="w-4 h-4 text-indigo-500" />
-                  <a href={event.online_url} target="_blank" rel="noopener noreferrer"
-                    className="text-indigo-600 hover:underline">{event.online_url}</a>
+                  <a href={event.onlineUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-indigo-600 hover:underline">{event.onlineUrl}</a>
                 </div>
               )}
-              {!event.is_online && event.location && (
+              {!event.isOnline && event.location && (
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="w-4 h-4 text-gray-400" />
                   <span className="text-gray-600">{event.location}</span>
@@ -135,7 +133,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-gray-900">関連アンケート</h2>
               <div className="flex items-center gap-3">
-                <LinkSurveyButton eventId={event.id} unlinkedSurveys={unlinkedSurveys ?? []} />
+                <LinkSurveyButton eventId={event.id} unlinkedSurveys={unlinkedSurveys} />
                 <Link
                   href={`/surveys/new?event_id=${event.id}`}
                   className="text-sm text-indigo-600 hover:underline flex items-center gap-1"
@@ -155,7 +153,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   >
                     <span className="text-sm font-medium text-gray-700">{survey.title}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-400">{survey.response_count}件の回答</span>
+                      <span className="text-xs text-gray-400">{survey.responseCount}件の回答</span>
                       <ExternalLink className="w-3.5 h-3.5 text-gray-300" />
                     </div>
                   </Link>
@@ -175,7 +173,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <Users className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{event.registration_count}</p>
+                <p className="text-2xl font-bold text-gray-900">{event.registrationCount}</p>
                 <p className="text-sm text-gray-500">参加者数</p>
               </div>
             </div>
@@ -183,12 +181,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-gray-400 mb-1">
                   <span>埋まり具合</span>
-                  <span>{Math.round((event.registration_count / event.capacity) * 100)}%</span>
+                  <span>{Math.round((event.registrationCount / event.capacity) * 100)}%</span>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full">
                   <div
                     className="h-2 bg-indigo-500 rounded-full"
-                    style={{ width: `${Math.min((event.registration_count / event.capacity) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((event.registrationCount / event.capacity) * 100, 100)}%` }}
                   />
                 </div>
               </div>

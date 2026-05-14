@@ -1,28 +1,25 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Plus, CalendarDays, Users, ExternalLink } from "lucide-react";
 import { formatDate, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, cn } from "@/lib/utils";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getEvents } from "@/lib/db/queries/events";
 
 export default async function EventsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const { data: events } = await supabase
-    .from("events")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const events = await getEvents(db, orgId);
 
   const statusColors: Record<string, string> = {
     draft: "bg-gray-100 text-gray-600",
@@ -68,13 +65,13 @@ export default async function EventsPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <span>{EVENT_TYPE_LABELS[event.event_type] || event.event_type}</span>
-                  {event.start_date && (
-                    <span>{formatDate(event.start_date)}</span>
+                  <span>{EVENT_TYPE_LABELS[event.eventType] || event.eventType}</span>
+                  {event.startDate && (
+                    <span>{formatDate(event.startDate)}</span>
                   )}
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    {event.registration_count}名
+                    {event.registrationCount}名
                   </span>
                 </div>
               </div>

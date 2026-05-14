@@ -1,34 +1,38 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
+import { getAuth } from '@/lib/auth'
+import { getDbFromContext } from '@/lib/db'
+import { updateSurvey } from '@/lib/db/queries/surveys'
 import { revalidatePath } from 'next/cache'
 
 export async function linkSurveyToEvent(surveyId: string, eventId: string): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
   if (!user) return { error: 'ログインが必要です' }
 
-  const admin = await createAdminClient()
+  const db = getDbFromContext()
 
-  const { error } = await admin
-    .from('surveys')
-    .update({ event_id: eventId })
-    .eq('id', surveyId)
-
-  if (error) return { error: error.message }
+  await updateSurvey(db, surveyId, { eventId })
 
   revalidatePath(`/events/${eventId}`)
   return {}
 }
 
 export async function getUnlinkedSurveys(eventId: string, orgId: string): Promise<{ id: string; title: string }[]> {
-  const admin = await createAdminClient()
-  const { data } = await admin
-    .from('surveys')
-    .select('id, title')
-    .eq('organization_id', orgId)
-    .or(`event_id.is.null,event_id.neq.${eventId}`)
-    .order('created_at', { ascending: false })
+  const { surveys } = await import('@/lib/db/schema')
+  const { eq, and, or, isNull, ne } = await import('drizzle-orm')
 
-  return data ?? []
+  const db = getDbFromContext()
+  const data = await db.query.surveys.findMany({
+    where: and(
+      eq(surveys.organizationId, orgId),
+      or(isNull(surveys.eventId), ne(surveys.eventId, eventId)),
+    ),
+    columns: { id: true, title: true },
+    orderBy: (s, { desc }) => [desc(s.createdAt)],
+  })
+
+  return data
 }

@@ -1,29 +1,26 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Plus, Mail, Send, Eye, MousePointer, ExternalLink } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import CampaignNav from "@/components/campaigns/CampaignNav";
+import { getAuth } from "@/lib/auth";
+import { getDbFromContext } from "@/lib/db";
+import { getUserProfile } from "@/lib/db/queries/users";
+import { getCampaigns } from "@/lib/db/queries/campaigns";
 
 export default async function CampaignsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("current_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  const orgId = profile?.current_organization_id;
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const { data: campaigns } = await supabase
-    .from("email_campaigns")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
+  const campaigns = await getCampaigns(db, orgId);
 
   const statusColors: Record<string, string> = {
     draft: "bg-gray-100 text-gray-600",
@@ -82,24 +79,24 @@ export default async function CampaignsPage() {
                   <div className="flex items-center gap-4 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
                       <Send className="w-3 h-3" />
-                      {campaign.sent_count}件送信
+                      {campaign.sentCount}件送信
                     </span>
                     <span className="flex items-center gap-1">
                       <Eye className="w-3 h-3" />
-                      開封率 {campaign.sent_count > 0 ? Math.round((campaign.open_count / campaign.sent_count) * 100) : 0}%
+                      開封率 {campaign.sentCount > 0 ? Math.round((campaign.openCount / campaign.sentCount) * 100) : 0}%
                     </span>
                     <span className="flex items-center gap-1">
                       <MousePointer className="w-3 h-3" />
-                      クリック率 {campaign.sent_count > 0 ? Math.round((campaign.click_count / campaign.sent_count) * 100) : 0}%
+                      クリック率 {campaign.sentCount > 0 ? Math.round((campaign.clickCount / campaign.sentCount) * 100) : 0}%
                     </span>
                   </div>
                 )}
-                {campaign.scheduled_at && campaign.status === "scheduled" && (
-                  <p className="text-xs text-blue-500">📅 {formatDate(campaign.scheduled_at)} 送信予定</p>
+                {campaign.scheduledAt && campaign.status === "scheduled" && (
+                  <p className="text-xs text-blue-500">{formatDate(campaign.scheduledAt)} 送信予定</p>
                 )}
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-xs text-gray-400">{formatDate(campaign.created_at)}</p>
+                <p className="text-xs text-gray-400">{formatDate(campaign.createdAt)}</p>
                 <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors mt-2 ml-auto" />
               </div>
             </Link>

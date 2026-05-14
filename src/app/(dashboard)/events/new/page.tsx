@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, CalendarDays } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createEventAction } from "./actions";
 
 const eventTypes = [
   { value: "seminar", label: "セミナー" },
@@ -37,48 +37,17 @@ export default function NewEventPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/auth/login"); return; }
+    const result = await createEventAction(form);
 
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("current_organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.current_organization_id) {
-      setError("組織が見つかりません");
+    if (result.error) {
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    const { data: event, error: err } = await supabase
-      .from("events")
-      .insert({
-        organization_id: profile.current_organization_id,
-        title: form.title,
-        description: form.description || null,
-        event_type: form.event_type,
-        start_date: form.start_date || null,
-        end_date: form.end_date || null,
-        location: form.location || null,
-        is_online: form.is_online,
-        online_url: form.online_url || null,
-        capacity: form.capacity ? parseInt(form.capacity) : null,
-        status: form.status,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (err || !event) {
-      setError("イベントの作成に失敗しました");
-      setLoading(false);
-      return;
+    if (result.eventId) {
+      router.push(`/events/${result.eventId}`);
     }
-
-    router.push(`/events/${event.id}`);
   };
 
   return (
