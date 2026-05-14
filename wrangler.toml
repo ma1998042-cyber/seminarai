@@ -11,3 +11,7 @@ binding = "ASSETS"
 binding = "DB"
 database_name = "seminar-crm-db"
 database_id = "4871e35b-8e52-4b61-8b04-6853b914e472"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "seminar-crm-uploads"

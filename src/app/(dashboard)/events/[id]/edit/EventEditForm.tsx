@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, ImagePlus, X } from "lucide-react";
 import { updateEventAction } from "./actions";
 
 const eventTypes = [
@@ -27,12 +27,16 @@ type EventData = {
   capacity: number | null;
   status: string;
   visibility: string;
+  thumbnailUrl: string | null;
 };
 
 export default function EventEditForm({ event }: { event: EventData }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState(event.thumbnailUrl || "");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     title: event.title,
@@ -48,6 +52,26 @@ export default function EventEditForm({ event }: { event: EventData }) {
     visibility: event.visibility,
   });
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "アップロードに失敗しました");
+      setThumbnailUrl(`/api/images/${data.key}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "アップロードに失敗しました");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -59,7 +83,10 @@ export default function EventEditForm({ event }: { event: EventData }) {
       return;
     }
 
-    const result = await updateEventAction(event.id, form);
+    const result = await updateEventAction(event.id, {
+      ...form,
+      thumbnail_url: thumbnailUrl || "",
+    });
 
     if (result.error) {
       setError(result.error);
@@ -109,6 +136,46 @@ export default function EventEditForm({ event }: { event: EventData }) {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">イベント画像</label>
+          {thumbnailUrl ? (
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200">
+              <img src={thumbnailUrl} alt="イベント画像" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setThumbnailUrl("")}
+                className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full aspect-video rounded-lg border-2 border-dashed border-gray-300 hover:border-indigo-400 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-indigo-500 transition-colors"
+            >
+              {uploading ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : (
+                <>
+                  <ImagePlus className="w-8 h-8" />
+                  <span className="text-sm">クリックして画像をアップロード</span>
+                  <span className="text-xs text-gray-300">JPEG, PNG, WebP, GIF（5MB以下）</span>
+                </>
+              )}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleImageUpload}
+            className="hidden"
           />
         </div>
 

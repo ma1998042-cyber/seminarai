@@ -19,6 +19,7 @@ export async function createEventAction(form: {
   capacity: string
   status: string
   visibility: string
+  thumbnail_url: string
 }): Promise<{ eventId?: string; error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -46,6 +47,7 @@ export async function createEventAction(form: {
     capacity: form.capacity ? parseInt(form.capacity) : undefined,
     status: form.status,
     visibility: form.visibility,
+    thumbnailUrl: form.thumbnail_url || undefined,
     createdBy: user.id,
   })
 
