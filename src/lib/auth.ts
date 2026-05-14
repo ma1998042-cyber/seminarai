@@ -5,21 +5,18 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { userProfiles } from "@/lib/db/schema";
 
-function getD1() {
-  const { env } = getCloudflareContext();
-  return env.DB;
-}
-
 /**
  * Better Auth サーバーインスタンスを取得する。
  * Cloudflare Workers/Pages環境ではリクエストコンテキスト内でのみ
  * D1バインディングにアクセスできるため、遅延初期化を行う。
  */
 export function getAuth() {
-  const d1 = getD1();
-  const db = getDb(d1);
+  const { env } = getCloudflareContext();
+  const db = getDb(env.DB);
 
   return betterAuth({
+    secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL || undefined,
     database: drizzleAdapter(db, {
       provider: "sqlite",
     }),
