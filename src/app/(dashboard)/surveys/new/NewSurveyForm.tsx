@@ -7,7 +7,7 @@ import {
   ArrowLeft, Plus, Trash2, GripVertical, Loader2, ClipboardList,
   Type, AlignLeft, CheckSquare, Circle, ChevronDown, Star, Hash, CreditCard,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { createSurvey } from "./actions";
 
 type QuestionType = "text" | "textarea" | "radio" | "checkbox" | "select" | "rating" | "number" | "email";
@@ -57,6 +57,7 @@ export default function NewSurveyForm({
   const [description, setDescription] = useState("");
   const [thankYouMessage, setThankYouMessage] = useState("ご回答ありがとうございました！");
   const [selectedEventId, setSelectedEventId] = useState(defaultEventId ?? "");
+  const [category, setCategory] = useState("general");
   const [paymentEnabled, setPaymentEnabled] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -85,6 +86,7 @@ export default function NewSurveyForm({
       description: description || undefined,
       thank_you_message: thankYouMessage,
       event_id: selectedEventId || null,
+      category,
       status,
       questions: questions.map((q, i) => ({ ...q, sort_order: i })),
       payment_enabled: paymentEnabled,
@@ -158,6 +160,18 @@ export default function NewSurveyForm({
             </select>
           </div>
         )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">カテゴリ</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          >
+            {Object.entries(SURVEY_CATEGORY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
         <div className="border border-gray-100 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

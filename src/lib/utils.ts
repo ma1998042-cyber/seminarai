@@ -98,3 +98,10 @@ export const EVENT_VISIBILITY_LABELS: Record<string, string> = {
   unlisted: "限定公開",
   draft: "下書き",
 }
+
+export const SURVEY_CATEGORY_LABELS: Record<string, string> = {
+  general: "一般",
+  registration: "申し込み",
+  pre_event: "事前",
+  post_event: "事後",
+}

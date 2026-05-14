@@ -29,6 +29,7 @@ export default async function EditSurveyPage({ params }: { params: Promise<{ id:
         title: survey.title,
         description: survey.description ?? "",
         thank_you_message: survey.thankYouMessage ?? "ご回答ありがとうございました！",
+        category: survey.category ?? "general",
         status: survey.status,
         payment_enabled: false,
         payment_amount: 0,

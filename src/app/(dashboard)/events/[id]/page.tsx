@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, Users, ClipboardList, Edit, ExternalLink, MapPin, Globe } from "lucide-react";
-import { formatDateTime, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LABELS, cn } from "@/lib/utils";
+import { formatDateTime, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LABELS, SURVEY_CATEGORY_LABELS, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
@@ -42,7 +42,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   // Get related surveys
   const surveys = await db.query.surveys.findMany({
     where: eq(surveysTable.eventId, event.id),
-    columns: { id: true, title: true, status: true, responseCount: true },
+    columns: { id: true, title: true, status: true, category: true, responseCount: true },
   });
 
   // Surveys not yet linked to this event (for LinkSurveyButton)
@@ -160,7 +160,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     href={`/surveys/${survey.id}`}
                     className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                   >
-                    <span className="text-sm font-medium text-gray-700">{survey.title}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">{survey.title}</span>
+                      {survey.category && survey.category !== "general" && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">
+                          {SURVEY_CATEGORY_LABELS[survey.category] || survey.category}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-400">{survey.responseCount}件の回答</span>
                       <ExternalLink className="w-3.5 h-3.5 text-gray-300" />

@@ -22,6 +22,7 @@ export async function createSurvey(data: {
   description?: string
   thank_you_message?: string
   event_id?: string | null
+  category?: string
   status: 'draft' | 'active'
   questions: Question[]
   payment_enabled?: boolean
@@ -44,6 +45,7 @@ export async function createSurvey(data: {
       title: data.title,
       description: data.description || undefined,
       thankYouMessage: data.thank_you_message || 'ご回答ありがとうございました！',
+      category: data.category || 'general',
       status: data.status,
       createdBy: user.id,
     })

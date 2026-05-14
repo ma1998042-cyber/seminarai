@@ -31,6 +31,7 @@ export async function createSurvey(
     eventId?: string;
     title: string;
     description?: string;
+    category?: string;
     status?: string;
     isAnonymous?: boolean;
     thankYouMessage?: string;
@@ -50,6 +51,7 @@ export async function updateSurvey(
     eventId: string | null;
     title: string;
     description: string | null;
+    category: string;
     status: string;
     isAnonymous: boolean;
     thankYouMessage: string | null;

@@ -23,6 +23,7 @@ export async function updateSurvey(surveyId: string, data: {
   title: string
   description?: string
   thank_you_message?: string
+  category?: string
   status: 'draft' | 'active' | 'closed'
   questions: Question[]
   payment_enabled?: boolean
@@ -40,6 +41,7 @@ export async function updateSurvey(surveyId: string, data: {
       title: data.title,
       description: data.description || null,
       thankYouMessage: data.thank_you_message || null,
+      category: data.category || 'general',
       status: data.status,
       publishedAt: data.status === 'active' ? new Date().toISOString() : null,
     })

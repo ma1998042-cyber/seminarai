@@ -7,7 +7,7 @@ import {
   ArrowLeft, Plus, Trash2, GripVertical, Loader2, ClipboardList,
   Type, AlignLeft, CheckSquare, Circle, ChevronDown, Star, Hash, CreditCard,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { updateSurvey } from "./actions";
 
 type QuestionType = "text" | "textarea" | "radio" | "checkbox" | "select" | "rating" | "number" | "email";
@@ -37,6 +37,7 @@ type InitialData = {
   title: string;
   description: string;
   thank_you_message: string;
+  category: string;
   status: string;
   payment_enabled: boolean;
   payment_amount: number;
@@ -50,6 +51,7 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [thankYouMessage, setThankYouMessage] = useState(initial.thank_you_message);
+  const [category, setCategory] = useState(initial.category || "general");
   const [paymentEnabled, setPaymentEnabled] = useState(initial.payment_enabled);
   const [paymentAmount, setPaymentAmount] = useState(initial.payment_amount ? String(initial.payment_amount) : "");
   const [questions, setQuestions] = useState<Question[]>(initial.questions);
@@ -87,6 +89,7 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
       title,
       description: description || undefined,
       thank_you_message: thankYouMessage,
+      category,
       status,
       questions: questions.map((q, i) => ({ ...q, sort_order: i })),
       payment_enabled: paymentEnabled,
@@ -125,6 +128,18 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">回答後のメッセージ</label>
           <input type="text" value={thankYouMessage} onChange={(e) => setThankYouMessage(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">カテゴリ</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          >
+            {Object.entries(SURVEY_CATEGORY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
         </div>
         <div className="border border-gray-100 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
