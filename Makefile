@@ -24,11 +24,13 @@ db-generate:
 db-migrate-local:
 	npx wrangler d1 execute seminar-crm-db --local --file=drizzle/migrations/0000_initial.sql
 	npx wrangler d1 execute seminar-crm-db --local --file=drizzle/migrations/0001_add_payment_columns.sql
+	npx wrangler d1 execute seminar-crm-db --local --file=drizzle/migrations/0002_clumsy_tana_nile.sql
 
 # リモートD1にマイグレーション適用
 db-migrate-remote:
 	npx wrangler d1 execute seminar-crm-db --remote --file=drizzle/migrations/0000_initial.sql
 	npx wrangler d1 execute seminar-crm-db --remote --file=drizzle/migrations/0001_add_payment_columns.sql
+	npx wrangler d1 execute seminar-crm-db --remote --file=drizzle/migrations/0002_clumsy_tana_nile.sql
 
 # Drizzle Studio
 db-studio:
