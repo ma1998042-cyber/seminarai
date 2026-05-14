@@ -1,68 +1,50 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { auth } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+export default auth(async (req) => {
+  const { nextUrl, auth: session } = req
+  const { pathname } = nextUrl
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/verify', '/pricing', '/events']
+  const isPublicRoute =
+    publicRoutes.some((r) => pathname === r || pathname.startsWith(r + '/')) ||
+    pathname.startsWith('/s/')
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const { pathname } = request.nextUrl
-
-  // Public routes
-  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/verify', '/auth/callback', '/pricing', '/s/']
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
-
-  // Admin routes
   const isAdminRoute = pathname.startsWith('/admin')
 
-  if (!user && !isPublicRoute) {
-    const url = request.nextUrl.clone()
+  if (!session?.user && !isPublicRoute) {
+    const url = nextUrl.clone()
     url.pathname = '/auth/login'
     url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
-  if (user && (pathname === '/auth/login' || pathname === '/auth/register')) {
-    const url = request.nextUrl.clone()
+  if (session?.user && (pathname === '/auth/login' || pathname === '/auth/register')) {
+    const url = nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Admin route protection
-  if (isAdminRoute && user) {
-    const { data: adminUser } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('id', user.id)
-      .single()
+  if (isAdminRoute && session?.user) {
+    const { getDb, adminUsers } = await import('@/lib/db')
+    const { eq } = await import('drizzle-orm')
+    const db = getDb()
+    const admin = await db
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.id, session.user.id))
+      .get()
 
-    if (!adminUser) {
-      const url = request.nextUrl.clone()
+    if (!admin) {
+      const url = nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
   }
 
-  return supabaseResponse
-}
+  return NextResponse.next()
+})
 
 export const config = {
   matcher: [
