@@ -1,5 +1,5 @@
 import { eq, and, like, or, sql, desc } from "drizzle-orm";
-import { customers, customerTags, tags, eventRegistrations } from "../schema";
+import { customers, customerTags, tags, eventRegistrations, surveyResponses, surveys } from "../schema";
 import type { Database } from "..";
 
 // =============================================
@@ -197,5 +197,54 @@ export async function getCustomerRegistrations(
     with: { event: true },
     orderBy: (reg, { desc }) => [desc(reg.registeredAt)],
     limit: options?.limit ?? 5,
+  });
+}
+
+// =============================================
+// 顧客のアンケート回答履歴
+// =============================================
+
+export async function getCustomerSurveyResponseCounts(
+  db: Database,
+  orgId: string,
+  customerEmails: string[],
+) {
+  if (customerEmails.length === 0) return {};
+
+  const rows = await db
+    .select({
+      email: surveyResponses.respondentEmail,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(surveyResponses)
+    .where(
+      and(
+        eq(surveyResponses.organizationId, orgId),
+        sql`${surveyResponses.respondentEmail} IN (${sql.join(customerEmails.map(e => sql`${e}`), sql`, `)})`,
+      ),
+    )
+    .groupBy(surveyResponses.respondentEmail);
+
+  const map: Record<string, number> = {};
+  for (const row of rows) {
+    if (row.email) map[row.email] = row.count;
+  }
+  return map;
+}
+
+export async function getCustomerSurveyResponses(
+  db: Database,
+  orgId: string,
+  customerEmail: string,
+) {
+  return db.query.surveyResponses.findMany({
+    where: and(
+      eq(surveyResponses.organizationId, orgId),
+      eq(surveyResponses.respondentEmail, customerEmail),
+    ),
+    with: {
+      survey: true,
+    },
+    orderBy: (resp, { desc }) => [desc(resp.submittedAt)],
   });
 }

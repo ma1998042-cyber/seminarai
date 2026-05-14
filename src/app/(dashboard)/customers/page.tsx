@@ -1,12 +1,12 @@
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
-import { getCustomers } from "@/lib/db/queries/customers";
+import { getCustomers, getCustomerSurveyResponseCounts } from "@/lib/db/queries/customers";
 import { getTags } from "@/lib/db/queries/tags";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Plus, Users, Tag, Upload } from "lucide-react";
+import { Plus, Users, Tag, Upload, ClipboardList } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import CustomerSearch from "./CustomerSearch";
 
@@ -39,6 +39,10 @@ export default async function CustomersPage({
   });
 
   const count = customerList.length;
+
+  // アンケート回答数を取得
+  const emails = customerList.map((c: any) => c.email).filter(Boolean);
+  const surveyCountMap = await getCustomerSurveyResponseCounts(db, orgId, emails);
 
   // Filter by tag client-side
   const filtered = tag
@@ -103,6 +107,7 @@ export default async function CustomersPage({
                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">会社・役職</th>
                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">ステータス</th>
                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">タグ</th>
+                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">回答数</th>
                 <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">登録日</th>
               </tr>
             </thead>
@@ -154,6 +159,16 @@ export default async function CustomersPage({
                           <span className="text-xs text-gray-400">+{customerTags.length - 3}</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {surveyCountMap[customer.email] ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          {surveyCountMap[customer.email]}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">0</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400">
                       {formatDate(customer.createdAt)}

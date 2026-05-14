@@ -1,12 +1,12 @@
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
-import { getCustomerById, getCustomerRegistrations } from "@/lib/db/queries/customers";
+import { getCustomerById, getCustomerRegistrations, getCustomerSurveyResponses } from "@/lib/db/queries/customers";
 import { getTags } from "@/lib/db/queries/tags";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone, Building2, Briefcase, Calendar } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Briefcase, Calendar, ClipboardList } from "lucide-react";
 import { formatDateTime, cn } from "@/lib/utils";
 import CustomerEditForm from "./CustomerEditForm";
 import TagManager from "./TagManager";
@@ -47,6 +47,7 @@ export default async function CustomerDetailPage({
   const allTags = await getTags(db, orgId);
 
   const registrations = await getCustomerRegistrations(db, id, { limit: 5 });
+  const surveyResponsesList = await getCustomerSurveyResponses(db, orgId, customer.email);
 
   const customerTags = (customer.customerTags as any[])
     ?.map((ct: any) => ct.tag)
@@ -113,6 +114,32 @@ export default async function CustomerDetailPage({
               </div>
             </div>
           )}
+
+          {/* Survey response history */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">アンケート回答履歴</h2>
+            {surveyResponsesList && surveyResponsesList.length > 0 ? (
+              <div className="space-y-2">
+                {surveyResponsesList.map((resp: any) => (
+                  <Link
+                    key={resp.id}
+                    href={`/surveys/${resp.survey?.id}`}
+                    className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ClipboardList className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{resp.survey?.title ?? "不明なアンケート"}</p>
+                        <p className="text-xs text-gray-400">{formatDateTime(resp.submittedAt)}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">まだ回答がありません</p>
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}
