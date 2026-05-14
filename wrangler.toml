@@ -1,9 +1,13 @@
 name = "seminar-crm"
+main = ".open-next/worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".open-next/assets"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "seminar-crm-db"
-database_id = "REPLACE_ME"
+database_id = "4871e35b-8e52-4b61-8b04-6853b914e472"
