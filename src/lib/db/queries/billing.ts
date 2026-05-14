@@ -45,6 +45,15 @@ export async function upsertSubscription(
   return sub;
 }
 
+export async function cancelSubscription(db: Database, stripeSubscriptionId: string) {
+  const [sub] = await db
+    .update(subscriptions)
+    .set({ status: "canceled", canceledAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+    .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId))
+    .returning();
+  return sub;
+}
+
 export async function getBillingHistory(db: Database, orgId: string) {
   return db.query.billingHistory.findMany({
     where: eq(billingHistory.organizationId, orgId),

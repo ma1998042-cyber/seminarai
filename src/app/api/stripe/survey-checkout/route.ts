@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createAdminClient } from '@/lib/supabase/server'
+import { getDbFromContext } from '@/lib/db'
+import { getSurveyById, createSurveyResponse, updateSurveyResponse } from '@/lib/db/queries'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-04-10' })
 
@@ -8,34 +9,25 @@ export async function POST(req: NextRequest) {
   try {
     const { surveyId, respondentName, respondentEmail, answers } = await req.json()
 
-    const admin = await createAdminClient()
+    const db = getDbFromContext()
 
-    const { data: survey } = await admin
-      .from('surveys')
-      .select('id, title, organization_id, payment_enabled, payment_amount, thank_you_message')
-      .eq('id', surveyId)
-      .single()
+    const survey = await getSurveyById(db, surveyId)
 
-    if (!survey || !survey.payment_enabled || !survey.payment_amount) {
+    if (!survey || !survey.paymentEnabled || !survey.paymentAmount) {
       return NextResponse.json({ error: 'Invalid survey' }, { status: 400 })
     }
 
     // Create pending response
-    const { data: response, error: respErr } = await admin
-      .from('survey_responses')
-      .insert({
-        survey_id: surveyId,
-        organization_id: survey.organization_id,
-        respondent_name: respondentName || null,
-        respondent_email: respondentEmail || null,
-        answers,
-        payment_status: 'pending',
-        submitted_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single()
+    const response = await createSurveyResponse(db, {
+      surveyId,
+      organizationId: survey.organizationId,
+      respondentName: respondentName || undefined,
+      respondentEmail: respondentEmail || undefined,
+      answers,
+      paymentStatus: 'pending',
+    })
 
-    if (respErr || !response) {
+    if (!response) {
       return NextResponse.json({ error: '回答の保存に失敗しました' }, { status: 500 })
     }
 
@@ -48,7 +40,7 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: 'jpy',
             product_data: { name: survey.title },
-            unit_amount: survey.payment_amount,
+            unit_amount: survey.paymentAmount,
           },
           quantity: 1,
         },
@@ -64,10 +56,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Save session ID to response
-    await admin
-      .from('survey_responses')
-      .update({ stripe_session_id: session.id })
-      .eq('id', response.id)
+    await updateSurveyResponse(db, response.id, { stripeSessionId: session.id })
 
     return NextResponse.json({ url: session.url })
   } catch (err) {

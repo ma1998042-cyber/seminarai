@@ -18,6 +18,12 @@ export async function getOrganizationBySlug(db: Database, slug: string) {
   });
 }
 
+export async function getOrganizationByStripeCustomerId(db: Database, stripeCustomerId: string) {
+  return db.query.organizations.findFirst({
+    where: eq(organizations.stripeCustomerId, stripeCustomerId),
+  });
+}
+
 export async function createOrganization(
   db: Database,
   data: {

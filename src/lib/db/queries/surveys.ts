@@ -129,11 +129,29 @@ export async function createSurveyResponse(
     respondentEmail?: string;
     respondentName?: string;
     answers: Record<string, unknown>;
+    paymentStatus?: string;
+    stripeSessionId?: string;
     ipAddress?: string;
     userAgent?: string;
   },
 ) {
   const [response] = await db.insert(surveyResponses).values(data).returning();
+  return response;
+}
+
+export async function updateSurveyResponse(
+  db: Database,
+  id: string,
+  data: Partial<{
+    paymentStatus: string;
+    stripeSessionId: string;
+  }>,
+) {
+  const [response] = await db
+    .update(surveyResponses)
+    .set(data)
+    .where(eq(surveyResponses.id, id))
+    .returning();
   return response;
 }
 

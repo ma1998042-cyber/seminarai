@@ -209,6 +209,8 @@ export const surveys = sqliteTable("surveys", {
   thankYouMessage: text("thank_you_message"),
   redirectUrl: text("redirect_url"),
   settings: text("settings", { mode: "json" }).notNull().$type<Record<string, unknown>>().default({}),
+  paymentEnabled: integer("payment_enabled", { mode: "boolean" }).notNull().default(false),
+  paymentAmount: integer("payment_amount"),
   responseCount: integer("response_count").notNull().default(0),
   createdBy: text("created_by"),
   publishedAt: text("published_at"),
@@ -246,6 +248,8 @@ export const surveyResponses = sqliteTable("survey_responses", {
   respondentEmail: text("respondent_email"),
   respondentName: text("respondent_name"),
   answers: text("answers", { mode: "json" }).notNull().$type<Record<string, unknown>>().default({}),
+  paymentStatus: text("payment_status"),
+  stripeSessionId: text("stripe_session_id"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   submittedAt: text("submitted_at").notNull().default(sql`(datetime('now'))`),
@@ -301,6 +305,74 @@ export const emailSends = sqliteTable("email_sends", {
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 }, (table) => [
   index("idx_email_sends_campaign").on(table.campaignId),
+]);
+
+// =============================================
+// EMAIL_TEMPLATES (メールテンプレート)
+// =============================================
+export const emailTemplates = sqliteTable("email_templates", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  previewText: text("preview_text"),
+  bodyHtml: text("body_html").notNull(),
+  createdBy: text("created_by"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_email_templates_org").on(table.organizationId),
+]);
+
+// =============================================
+// STEP_CAMPAIGNS (ステップ配信)
+// =============================================
+export const stepCampaigns = sqliteTable("step_campaigns", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("draft"),
+  triggerType: text("trigger_type").notNull().default("manual"),
+  triggerEventId: text("trigger_event_id"),
+  triggerTagId: text("trigger_tag_id"),
+  createdBy: text("created_by"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_step_campaigns_org").on(table.organizationId),
+]);
+
+// =============================================
+// STEP_CAMPAIGN_STEPS (ステップ配信のステップ)
+// =============================================
+export const stepCampaignSteps = sqliteTable("step_campaign_steps", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  stepCampaignId: text("step_campaign_id").notNull().references(() => stepCampaigns.id, { onDelete: "cascade" }),
+  stepNumber: integer("step_number").notNull().default(1),
+  name: text("name"),
+  delayDays: integer("delay_days").notNull().default(0),
+  subject: text("subject").notNull(),
+  previewText: text("preview_text"),
+  bodyHtml: text("body_html").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_step_campaign_steps_campaign").on(table.stepCampaignId),
+]);
+
+// =============================================
+// STEP_CAMPAIGN_ENROLLMENTS (ステップ配信の登録者)
+// =============================================
+export const stepCampaignEnrollments = sqliteTable("step_campaign_enrollments", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  stepCampaignId: text("step_campaign_id").notNull().references(() => stepCampaigns.id, { onDelete: "cascade" }),
+  customerId: text("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("active"),
+  currentStep: integer("current_step").notNull().default(0),
+  enrolledAt: text("enrolled_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("step_enrollments_campaign_customer_unique").on(table.stepCampaignId, table.customerId),
 ]);
 
 // =============================================
@@ -472,4 +544,24 @@ export const invitationsRelations = relations(invitations, ({ one }) => ({
 
 export const usageLogsRelations = relations(usageLogs, ({ one }) => ({
   organization: one(organizations, { fields: [usageLogs.organizationId], references: [organizations.id] }),
+}));
+
+export const emailTemplatesRelations = relations(emailTemplates, ({ one }) => ({
+  organization: one(organizations, { fields: [emailTemplates.organizationId], references: [organizations.id] }),
+}));
+
+export const stepCampaignsRelations = relations(stepCampaigns, ({ one, many }) => ({
+  organization: one(organizations, { fields: [stepCampaigns.organizationId], references: [organizations.id] }),
+  steps: many(stepCampaignSteps),
+  enrollments: many(stepCampaignEnrollments),
+}));
+
+export const stepCampaignStepsRelations = relations(stepCampaignSteps, ({ one }) => ({
+  stepCampaign: one(stepCampaigns, { fields: [stepCampaignSteps.stepCampaignId], references: [stepCampaigns.id] }),
+}));
+
+export const stepCampaignEnrollmentsRelations = relations(stepCampaignEnrollments, ({ one }) => ({
+  stepCampaign: one(stepCampaigns, { fields: [stepCampaignEnrollments.stepCampaignId], references: [stepCampaigns.id] }),
+  customer: one(customers, { fields: [stepCampaignEnrollments.customerId], references: [customers.id] }),
+  organization: one(organizations, { fields: [stepCampaignEnrollments.organizationId], references: [organizations.id] }),
 }));
