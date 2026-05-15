@@ -56,7 +56,7 @@ function datetimeLocalToUnix(val: string): number | null {
   return Math.floor(new Date(val).getTime() / 1000);
 }
 
-export default function SurveyEditForm({ surveyId, initial }: { surveyId: string; initial: InitialData }) {
+export default function SurveyEditForm({ surveyId, hasEvent, initial }: { surveyId: string; hasEvent: boolean; initial: InitialData }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -150,10 +150,15 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           >
-            {Object.entries(SURVEY_CATEGORY_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
+            {Object.entries(SURVEY_CATEGORY_LABELS)
+              .filter(([value]) => hasEvent || !["pre_event", "post_event"].includes(value))
+              .map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
           </select>
+          {!hasEvent && (
+            <p className="text-xs text-gray-400 mt-1">事前・事後アンケートはイベントに紐づけると選択できます</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">

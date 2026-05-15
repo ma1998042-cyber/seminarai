@@ -25,6 +25,7 @@ export default async function EditSurveyPage({ params }: { params: Promise<{ id:
   return (
     <SurveyEditForm
       surveyId={id}
+      hasEvent={!!survey.eventId}
       initial={{
         title: survey.title,
         description: survey.description ?? "",

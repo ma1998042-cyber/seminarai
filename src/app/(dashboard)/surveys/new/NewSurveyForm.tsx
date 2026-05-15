@@ -150,7 +150,12 @@ export default function NewSurveyForm({
             <label className="block text-sm font-medium text-gray-700 mb-1.5">関連イベント</label>
             <select
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onChange={(e) => {
+                setSelectedEventId(e.target.value);
+                if (!e.target.value && ["pre_event", "post_event"].includes(category)) {
+                  setCategory("general");
+                }
+              }}
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             >
               <option value="">イベントに紐づけない</option>
@@ -167,10 +172,15 @@ export default function NewSurveyForm({
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           >
-            {Object.entries(SURVEY_CATEGORY_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
+            {Object.entries(SURVEY_CATEGORY_LABELS)
+              .filter(([value]) => selectedEventId || !["pre_event", "post_event"].includes(value))
+              .map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
           </select>
+          {!selectedEventId && (
+            <p className="text-xs text-gray-400 mt-1">事前・事後アンケートはイベントを選択すると表示されます</p>
+          )}
         </div>
         <div className="border border-gray-100 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">

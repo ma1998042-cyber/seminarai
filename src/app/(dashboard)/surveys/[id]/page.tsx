@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, MessageSquare, ExternalLink, BarChart3, Clock } from "lucide-react";
 import CopyUrlButton from "./CopyUrlButton";
-import { formatDateTime, cn } from "@/lib/utils";
+import { formatDateTime, cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
@@ -66,6 +66,11 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
               <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", statusColors[survey.status] || statusColors.draft)}>
                 {statusLabels[survey.status] || survey.status}
               </span>
+              {survey.category && survey.category !== "general" && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-indigo-50 text-indigo-600">
+                  {SURVEY_CATEGORY_LABELS[survey.category] || survey.category}
+                </span>
+              )}
             </div>
             {survey.eventId && (
               <p className="text-sm text-gray-500">イベント紐づけ済み</p>
