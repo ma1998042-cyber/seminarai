@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Loader2, Play, Pause, Mail, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Loader2, Play, Pause, Mail, Clock, AlertTriangle, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { saveStep, deleteStep, updateSequenceStatus, deleteSequenceAction, getSequenceData } from "../actions";
 
@@ -50,6 +50,8 @@ export default function SequenceDetailPage() {
   const [newStep, setNewStep] = useState({ ...emptyStep });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [editStep, setEditStep] = useState({ delay_days: 0, subject: "", body_html: "", name: "", preview_text: "" });
 
   const fetchData = async () => {
     try {
@@ -96,6 +98,42 @@ export default function SequenceDetailPage() {
     const result = await updateSequenceStatus(id, next);
     if (result.error) { setError(result.error); return; }
     setSequence({ ...sequence, status: next });
+  };
+
+  const handleStartEdit = (step: Step) => {
+    setEditingStepId(step.id);
+    setEditStep({
+      delay_days: step.delayDays,
+      subject: step.subject,
+      body_html: step.bodyHtml,
+      name: step.name || "",
+      preview_text: step.previewText || "",
+    });
+    setExpandedStep(step.id);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStepId(null);
+  };
+
+  const handleSaveEdit = async (step: Step) => {
+    if (!editStep.subject || !editStep.body_html) { setError("件名と本文は必須です"); return; }
+    setSaving(true);
+    setError("");
+    const result = await saveStep({
+      id: step.id,
+      step_campaign_id: id,
+      step_number: step.stepNumber,
+      name: editStep.name,
+      delay_days: editStep.delay_days,
+      subject: editStep.subject,
+      preview_text: editStep.preview_text,
+      body_html: editStep.body_html,
+    });
+    setSaving(false);
+    if (result.error) { setError(result.error); return; }
+    setEditingStepId(null);
+    await fetchData();
   };
 
   const handleDeleteSequence = async () => {
@@ -194,6 +232,12 @@ export default function SequenceDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={(e) => { e.stopPropagation(); handleStartEdit(step); }}
+                  className="p-1.5 text-gray-300 hover:text-indigo-500 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
                   onClick={(e) => { e.stopPropagation(); handleDeleteStep(step.id); }}
                   className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
                 >
@@ -203,7 +247,37 @@ export default function SequenceDetailPage() {
               </div>
             </button>
 
-            {expandedStep === step.id && (
+            {expandedStep === step.id && editingStepId === step.id && (
+              <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">ステップ名（任意）</label>
+                    <input type="text" value={editStep.name} onChange={(e) => setEditStep({ ...editStep, name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="例：フォローアップ1通目" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">送信タイミング（登録から何日後）</label>
+                    <input type="number" min={0} value={editStep.delay_days} onChange={(e) => setEditStep({ ...editStep, delay_days: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">件名 <span className="text-red-500">*</span></label>
+                  <input type="text" value={editStep.subject} onChange={(e) => setEditStep({ ...editStep, subject: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="メールの件名" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">本文 <span className="text-red-500">*</span></label>
+                  <textarea value={editStep.body_html} onChange={(e) => setEditStep({ ...editStep, body_html: e.target.value })} rows={8} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" placeholder={"<p>{{name}}様</p>\n<p>...</p>"} />
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleCancelEdit} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors">キャンセル</button>
+                  <button onClick={() => handleSaveEdit(step)} disabled={saving} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    保存する
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {expandedStep === step.id && editingStepId !== step.id && (
               <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
