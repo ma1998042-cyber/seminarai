@@ -16,6 +16,3 @@ migrations_dir = "drizzle/migrations"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "seminar-crm-uploads"
-
-[vars]
-RESEND_API_KEY = ""

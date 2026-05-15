@@ -1,17 +1,14 @@
-import { Resend } from "resend";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-let _resend: Resend | null = null;
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-function getResendClient(): Resend {
-  if (_resend) return _resend;
+function getBrevoApiKey(): string {
   const { env } = getCloudflareContext();
-  const apiKey = env.RESEND_API_KEY;
+  const apiKey = env.BREVO_API_KEY;
   if (!apiKey) {
-    throw new Error("RESEND_API_KEY is not configured");
+    throw new Error("BREVO_API_KEY is not configured");
   }
-  _resend = new Resend(apiKey);
-  return _resend;
+  return apiKey;
 }
 
 /**
@@ -25,17 +22,28 @@ export async function sendEmail(
   subject: string,
   html: string
 ) {
-  const resend = getResendClient();
-  const { data, error } = await resend.emails.send({
-    from: "noreply@example.com",
-    to: Array.isArray(to) ? to : [to],
-    subject,
-    html,
+  const apiKey = getBrevoApiKey();
+  const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({ email }));
+
+  const res = await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: "sk-techlab", email: "foritemaqua@gmail.com" },
+      to: recipients,
+      subject,
+      htmlContent: html,
+    }),
   });
 
-  if (error) {
-    throw new Error(`Failed to send email: ${error.message}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to send email: ${res.status} ${body}`);
   }
 
-  return data;
+  return res.json();
 }
