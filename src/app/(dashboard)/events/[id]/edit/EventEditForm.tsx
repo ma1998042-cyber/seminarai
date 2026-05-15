@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Save, ImagePlus, X } from "lucide-react";
+import { ArrowLeft, Loader2, Save, ImagePlus, X, AlertTriangle } from "lucide-react";
 import { updateEventAction } from "./actions";
 
 const MAX_IMAGES = 3;
@@ -31,9 +31,10 @@ type EventData = {
   visibility: string;
   thumbnailUrl: string | null;
   imageUrls: string[];
+  showRemainingCapacity: number;
 };
 
-export default function EventEditForm({ event }: { event: EventData }) {
+export default function EventEditForm({ event, hasRegistrationSurvey }: { event: EventData; hasRegistrationSurvey: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +60,7 @@ export default function EventEditForm({ event }: { event: EventData }) {
     capacity: event.capacity?.toString() || "",
     status: event.status,
     visibility: event.visibility,
+    show_remaining_capacity: event.showRemainingCapacity === 1,
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +103,7 @@ export default function EventEditForm({ event }: { event: EventData }) {
       ...form,
       thumbnail_url: imageUrls[0] || "",
       image_urls: imageUrls,
+      show_remaining_capacity: form.show_remaining_capacity,
     });
 
     if (result.error) {
@@ -305,6 +308,28 @@ export default function EventEditForm({ event }: { event: EventData }) {
           />
         </div>
 
+        <div className="flex items-center justify-between py-3 px-4 border border-gray-200 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-gray-700">残席数を公開ページに表示する</p>
+            <p className="text-xs text-gray-400 mt-0.5">定員に対する残席数を参加者に公開します</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.show_remaining_capacity}
+            onClick={() => setForm({ ...form, show_remaining_capacity: !form.show_remaining_capacity })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              form.show_remaining_capacity ? "bg-indigo-600" : "bg-gray-200"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                form.show_remaining_capacity ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">公開ステータス</label>
           <div className="flex gap-3">
@@ -347,6 +372,12 @@ export default function EventEditForm({ event }: { event: EventData }) {
               </button>
             ))}
           </div>
+          {!hasRegistrationSurvey && (form.visibility === "public" || form.visibility === "unlisted") && (
+            <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>申し込みアンケート（registration）が未設定のため、公開ページで申し込みフォームが表示されません。</span>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 pt-2">

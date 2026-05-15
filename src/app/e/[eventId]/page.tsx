@@ -1,7 +1,9 @@
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvent } from "@/lib/db/queries/events";
+import { surveys } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, MapPin, Globe, Users } from "lucide-react";
+import { CalendarDays, MapPin, Globe, Users, Info } from "lucide-react";
 import EventRegistrationForm from "./EventRegistrationForm";
 
 export default async function PublicEventPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -25,6 +27,15 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
   }
 
   const isFull = event.capacity != null && event.registrationCount >= event.capacity;
+
+  // 申し込みアンケート（registration カテゴリ）の存在チェック
+  const registrationSurvey = await db.query.surveys.findFirst({
+    where: and(
+      eq(surveys.eventId, event.id),
+      eq(surveys.category, "registration"),
+    ),
+  });
+  const hasRegistrationSurvey = !!registrationSurvey;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -86,16 +97,15 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
                 </div>
               )}
 
-              {/* 定員 */}
-              {event.capacity != null && (
+              {/* 残席 */}
+              {event.showRemainingCapacity === 1 && event.capacity != null && (
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span>
-                    定員 {event.capacity}名（申込 {event.registrationCount}名）
-                    {isFull && (
-                      <span className="ml-2 text-red-600 font-medium">満席</span>
-                    )}
-                  </span>
+                  {isFull ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">満席</span>
+                  ) : (
+                    <span>あと{event.capacity - event.registrationCount}名</span>
+                  )}
                 </div>
               )}
             </div>
@@ -110,10 +120,22 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
         </div>
 
         {/* 申し込みフォーム */}
-        <EventRegistrationForm
-          eventId={event.id}
-          isFull={isFull}
-        />
+        {hasRegistrationSurvey ? (
+          <EventRegistrationForm
+            eventId={event.id}
+            isFull={isFull}
+          />
+        ) : (
+          <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Info className="w-8 h-8 text-blue-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-700 mb-2">現在申し込みフォームは準備中です</h2>
+              <p className="text-sm text-gray-400">しばらくお待ちください</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getEventById } from "@/lib/db/queries/events";
+import { surveys } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import EventEditForm from "./EventEditForm";
 
 export default async function EventEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,8 +23,18 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
   const event = await getEventById(db, orgId, id);
   if (!event) notFound();
 
+  // 申し込みアンケートの存在チェック
+  const registrationSurvey = await db.query.surveys.findFirst({
+    where: and(
+      eq(surveys.eventId, event.id),
+      eq(surveys.category, "registration"),
+    ),
+  });
+  const hasRegistrationSurvey = !!registrationSurvey;
+
   return (
     <EventEditForm
+      hasRegistrationSurvey={hasRegistrationSurvey}
       event={{
         id: event.id,
         title: event.title,
@@ -38,6 +50,7 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
         visibility: event.visibility,
         thumbnailUrl: event.thumbnailUrl,
         imageUrls: (event.imageUrls as string[]) || [],
+        showRemainingCapacity: event.showRemainingCapacity,
       }}
     />
   );
