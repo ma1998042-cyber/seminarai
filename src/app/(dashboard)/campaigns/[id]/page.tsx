@@ -27,6 +27,8 @@ import {
   updateCampaignAction,
   deleteCampaignAction,
   cancelCampaignAction,
+  getCustomersByTarget,
+  getCampaignRecipients,
 } from "./actions";
 
 type Campaign = NonNullable<Awaited<ReturnType<typeof getCampaignDetail>>>;
@@ -61,6 +63,19 @@ export default function CampaignDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
+
+  // 配信対象プレビュー（編集時）
+  const [previewCustomers, setPreviewCustomers] = useState<
+    { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
+  >([]);
+  const [previewTotal, setPreviewTotal] = useState(0);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  // 送信済み受信者リスト
+  const [sentRecipients, setSentRecipients] = useState<
+    { email: string; fullName: string | null; status: string; sentAt: string | null }[]
+  >([]);
+  const [sentRecipientsTotal, setSentRecipientsTotal] = useState(0);
 
   const [form, setForm] = useState({
     title: "",
@@ -106,6 +121,41 @@ export default function CampaignDetailPage() {
     };
     fetchData();
   }, [id, router]);
+
+  // 編集時: 配信対象プレビューを取得
+  useEffect(() => {
+    if (!isEditable) return;
+    if (form.target_type === "tag" && form.target_tag_ids.length === 0) {
+      setPreviewCustomers([]);
+      setPreviewTotal(0);
+      return;
+    }
+    if (form.target_type === "survey_respondents" && !form.target_survey_id) {
+      setPreviewCustomers([]);
+      setPreviewTotal(0);
+      return;
+    }
+    setPreviewLoading(true);
+    getCustomersByTarget(form.target_type, form.target_tag_ids, form.target_survey_id)
+      .then((result) => {
+        setPreviewCustomers(result.customers);
+        setPreviewTotal(result.total);
+      })
+      .catch(() => {
+        setPreviewCustomers([]);
+        setPreviewTotal(0);
+      })
+      .finally(() => setPreviewLoading(false));
+  }, [isEditable, form.target_type, form.target_tag_ids, form.target_survey_id]);
+
+  // 送信済み: 受信者リストを取得
+  useEffect(() => {
+    if (campaign?.status !== "sent") return;
+    getCampaignRecipients(id).then((result) => {
+      setSentRecipients(result.recipients);
+      setSentRecipientsTotal(result.total);
+    });
+  }, [campaign?.status, id]);
 
   const toggleTagSelection = (tagId: string) => {
     setForm((prev) => ({
@@ -252,6 +302,60 @@ export default function CampaignDetailPage() {
           {campaign.sentAt && (
             <p className="text-xs text-gray-400 mt-4">送信日時: {formatDateTime(campaign.sentAt)}</p>
           )}
+        </div>
+      )}
+
+      {/* 送信先リスト（送信済み） */}
+      {campaign.status === "sent" && sentRecipients.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900">送信先一覧</h2>
+            <span className="text-sm text-gray-500">{sentRecipientsTotal}名</span>
+          </div>
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-xs">
+                  <th className="text-left px-4 py-2 font-medium">名前</th>
+                  <th className="text-left px-4 py-2 font-medium">メールアドレス</th>
+                  <th className="text-left px-4 py-2 font-medium">ステータス</th>
+                  <th className="text-left px-4 py-2 font-medium">送信日時</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {sentRecipients.map((r, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-gray-900">
+                      {r.fullName || <span className="text-gray-400">未設定</span>}
+                    </td>
+                    <td className="px-4 py-2 text-gray-600">{r.email}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={cn(
+                          "text-xs px-2 py-0.5 rounded-full font-medium",
+                          r.status === "sent"
+                            ? "bg-green-100 text-green-700"
+                            : r.status === "failed"
+                            ? "bg-red-100 text-red-600"
+                            : "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {r.status === "sent" ? "送信済み" : r.status === "failed" ? "失敗" : "保留中"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-gray-500 text-xs">
+                      {r.sentAt ? formatDateTime(r.sentAt) : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {sentRecipientsTotal > 100 && (
+              <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 text-center border-t border-gray-100">
+                他 {sentRecipientsTotal - 100}名
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -413,6 +517,65 @@ export default function CampaignDetailPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* 配信対象プレビュー */}
+            {(form.target_type === "all" || (form.target_type === "tag" && form.target_tag_ids.length > 0) || (form.target_type === "survey_respondents" && form.target_survey_id)) && (
+              <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-500" />
+                    <span className="text-sm font-medium text-gray-700">
+                      配信対象: <span className="text-indigo-600 font-semibold">{previewTotal}名</span>
+                    </span>
+                  </div>
+                  {previewLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                </div>
+                {previewCustomers.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-500 text-xs">
+                          <th className="text-left px-4 py-2 font-medium">名前</th>
+                          <th className="text-left px-4 py-2 font-medium">メールアドレス</th>
+                          <th className="text-left px-4 py-2 font-medium">タグ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {previewCustomers.map((customer) => (
+                          <tr key={customer.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-gray-900">
+                              {customer.fullName || <span className="text-gray-400">未設定</span>}
+                            </td>
+                            <td className="px-4 py-2 text-gray-600">{customer.email}</td>
+                            <td className="px-4 py-2">
+                              <div className="flex flex-wrap gap-1">
+                                {customer.tags.map((tag, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                                    style={{ backgroundColor: tag.color }}
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {previewTotal > 50 && (
+                      <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 text-center border-t border-gray-100">
+                        他 {previewTotal - 50}名
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!previewLoading && previewCustomers.length === 0 && (
+                  <p className="text-sm text-gray-400">対象の顧客が見つかりません</p>
+                )}
               </div>
             )}
           </>
@@ -673,7 +836,9 @@ export default function CampaignDetailPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">今すぐ配信</h3>
-                <p className="text-sm text-gray-500">メールを即時送信します。この操作は取り消せません。</p>
+                <p className="text-sm text-gray-500">
+                  <span className="font-semibold text-indigo-600">{previewTotal}名</span>にメールを即時送信します。この操作は取り消せません。
+                </p>
               </div>
             </div>
             <div className="flex gap-3">

@@ -5,6 +5,7 @@ import { getAuth } from '@/lib/auth'
 import { getDbFromContext } from '@/lib/db'
 import { getUserProfile } from '@/lib/db/queries/users'
 import { getCampaignById, updateCampaign as updateCampaignQuery, deleteCampaign as deleteCampaignQuery } from '@/lib/db/queries/campaigns'
+import { getCustomers } from '@/lib/db/queries/customers'
 import { getTags } from '@/lib/db/queries/tags'
 import { customerTags, customers, emailSends, surveyResponses, surveys, emailCampaigns } from '@/lib/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
@@ -261,4 +262,160 @@ async function resolveTargetEmails(
   })
 
   return allCustomers.map((c: any) => ({ email: c.email, customerId: c.id }))
+}
+
+export async function getCustomersByTarget(
+  targetType: string,
+  tagIds: string[],
+  surveyId?: string,
+): Promise<{
+  customers: { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
+  total: number
+}> {
+  const ctx = await getSessionAndOrg()
+  if (!ctx) return { customers: [], total: 0 }
+
+  const { db, orgId } = ctx
+
+  if (targetType === 'survey_respondents' && surveyId) {
+    const responses = await db
+      .select({ email: surveyResponses.respondentEmail, name: surveyResponses.respondentName })
+      .from(surveyResponses)
+      .where(eq(surveyResponses.surveyId, surveyId))
+
+    const uniqueEmails = [...new Set(responses.filter((r: any) => r.email).map((r: any) => r.email!))] as string[]
+    if (uniqueEmails.length === 0) return { customers: [], total: 0 }
+
+    const total = uniqueEmails.length
+    const limitedEmails = uniqueEmails.slice(0, 50)
+
+    const results = await db.query.customers.findMany({
+      where: and(
+        eq(customers.organizationId, orgId),
+        inArray(customers.email, limitedEmails),
+      ),
+      with: { customerTags: { with: { tag: true } } },
+    })
+
+    const existingEmails = new Set(results.map((c: any) => c.email))
+    const nonCustomerRespondents = responses
+      .filter((r: any) => r.email && !existingEmails.has(r.email))
+      .slice(0, 50 - results.length)
+
+    return {
+      customers: [
+        ...results.map((c: any) => ({
+          id: c.id,
+          fullName: c.fullName,
+          email: c.email,
+          tags: (c.customerTags ?? []).map((ct: any) => ({ name: ct.tag.name, color: ct.tag.color })),
+        })),
+        ...nonCustomerRespondents.map((r: any) => ({
+          id: r.email!,
+          fullName: r.name,
+          email: r.email!,
+          tags: [],
+        })),
+      ],
+      total,
+    }
+  }
+
+  if (targetType === 'tag' && tagIds.length > 0) {
+    const taggedCustomerRows = await db
+      .select({ customerId: customerTags.customerId })
+      .from(customerTags)
+      .where(inArray(customerTags.tagId, tagIds))
+
+    const customerIds = [...new Set(taggedCustomerRows.map((r: any) => r.customerId))] as string[]
+    if (customerIds.length === 0) return { customers: [], total: 0 }
+
+    const total = customerIds.length
+    const limitedIds = customerIds.slice(0, 50)
+
+    const results = await db.query.customers.findMany({
+      where: and(
+        eq(customers.organizationId, orgId),
+        inArray(customers.id, limitedIds),
+      ),
+      with: { customerTags: { with: { tag: true } } },
+    })
+
+    return {
+      customers: results.map((c: any) => ({
+        id: c.id,
+        fullName: c.fullName,
+        email: c.email,
+        tags: (c.customerTags ?? []).map((ct: any) => ({ name: ct.tag.name, color: ct.tag.color })),
+      })),
+      total,
+    }
+  }
+
+  // 全顧客
+  const allCustomersList = await getCustomers(db, orgId, { limit: 51, withTags: true })
+  const limited = allCustomersList.slice(0, 50)
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(customers)
+    .where(eq(customers.organizationId, orgId))
+
+  const total = countRow?.count ?? limited.length
+
+  return {
+    customers: limited.map((c: any) => ({
+      id: c.id,
+      fullName: c.fullName,
+      email: c.email,
+      tags: (c.customerTags ?? []).map((ct: any) => ({ name: ct.tag.name, color: ct.tag.color })),
+    })),
+    total,
+  }
+}
+
+export async function getCampaignRecipients(campaignId: string): Promise<{
+  recipients: { email: string; fullName: string | null; status: string; sentAt: string | null }[]
+  total: number
+}> {
+  const ctx = await getSessionAndOrg()
+  if (!ctx) return { recipients: [], total: 0 }
+
+  const sends = await ctx.db
+    .select({
+      email: emailSends.email,
+      customerId: emailSends.customerId,
+      status: emailSends.status,
+      sentAt: emailSends.sentAt,
+    })
+    .from(emailSends)
+    .where(and(
+      eq(emailSends.campaignId, campaignId),
+      eq(emailSends.organizationId, ctx.orgId),
+    ))
+
+  const total = sends.length
+
+  // 顧客IDから名前を取得
+  const customerIds = sends.filter((s: any) => s.customerId).map((s: any) => s.customerId!) as string[]
+  let customerNameMap = new Map<string, string | null>()
+  if (customerIds.length > 0) {
+    const customerRows = await ctx.db.query.customers.findMany({
+      where: and(
+        eq(customers.organizationId, ctx.orgId),
+        inArray(customers.id, customerIds),
+      ),
+      columns: { id: true, fullName: true },
+    })
+    customerNameMap = new Map(customerRows.map((c: any) => [c.id, c.fullName]))
+  }
+
+  const recipients = sends.slice(0, 100).map((s: any) => ({
+    email: s.email,
+    fullName: s.customerId ? (customerNameMap.get(s.customerId) ?? null) : null,
+    status: s.status,
+    sentAt: s.sentAt,
+  }))
+
+  return { recipients, total }
 }
