@@ -84,8 +84,17 @@ export async function saveStep(data: {
 }) {
   const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
+  const orgId = await getOrgId(user.id)
+  if (!orgId) return { error: '組織が設定されていません' }
 
   const db = getDbFromContext()
+
+  // step_campaign_id が現在ユーザーの組織に属するか検証
+  const campaign = await db.query.stepCampaigns.findFirst({
+    where: and(eq(stepCampaigns.id, data.step_campaign_id), eq(stepCampaigns.organizationId, orgId)),
+  })
+  if (!campaign) return { error: '対象のステップ配信が見つかりません' }
+
   const payload = {
     stepCampaignId: data.step_campaign_id,
     stepNumber: data.step_number,
@@ -109,8 +118,22 @@ export async function saveStep(data: {
 export async function deleteStep(id: string) {
   const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
+  const orgId = await getOrgId(user.id)
+  if (!orgId) return { error: '組織が設定されていません' }
 
   const db = getDbFromContext()
+
+  // 削除対象のステップが現在ユーザーの組織に属するか検証
+  const step = await db.query.stepCampaignSteps.findFirst({
+    where: eq(stepCampaignSteps.id, id),
+  })
+  if (!step) return { error: 'ステップが見つかりません' }
+
+  const campaign = await db.query.stepCampaigns.findFirst({
+    where: and(eq(stepCampaigns.id, step.stepCampaignId), eq(stepCampaigns.organizationId, orgId)),
+  })
+  if (!campaign) return { error: '対象のステップ配信が見つかりません' }
+
   await db.delete(stepCampaignSteps).where(eq(stepCampaignSteps.id, id))
   return {}
 }
@@ -154,9 +177,14 @@ export async function getSequenceData(id: string): Promise<{
     bodyHtml: string
   }[]
 }> {
+  const user = await getAuthUser()
+  if (!user) return { sequence: null, steps: [] }
+  const orgId = await getOrgId(user.id)
+  if (!orgId) return { sequence: null, steps: [] }
+
   const db = getDbFromContext()
   const sequence = await db.query.stepCampaigns.findFirst({
-    where: eq(stepCampaigns.id, id),
+    where: and(eq(stepCampaigns.id, id), eq(stepCampaigns.organizationId, orgId)),
   })
   if (!sequence) return { sequence: null, steps: [] }
 
