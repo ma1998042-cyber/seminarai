@@ -4,7 +4,7 @@ import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { user as userTable } from "@/lib/db/auth-schema";
-import { organizationMembers } from "@/lib/db/schema";
+import { organizationMembers, invitations } from "@/lib/db/schema";
 import { getUserProfile, updateUserProfile } from "@/lib/db/queries/users";
 import { getOrganizationById, updateOrganization } from "@/lib/db/queries/organizations";
 import { createInvitation, deleteInvitation } from "@/lib/db/queries/invitations";
@@ -120,6 +120,16 @@ export async function inviteMember(
     }
   }
 
+  // 既存の招待（承認済み・期限切れ含む）を削除して再招待できるようにする
+  const existingInvitation = await db.select({ id: invitations.id, acceptedAt: invitations.acceptedAt }).from(invitations).where(and(eq(invitations.organizationId, orgId), eq(invitations.email, normalizedEmail))).get();
+  if (existingInvitation) {
+    if (!existingInvitation.acceptedAt) {
+      return { error: "このメールアドレスにはすでに招待を送信しています" };
+    }
+    // 承認済みの古い招待レコードを削除
+    await deleteInvitation(db, existingInvitation.id);
+  }
+
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -160,7 +170,9 @@ export async function inviteMember(
     revalidatePath("/settings/members");
     return { success: true };
   } catch (err: any) {
-    if (err?.message?.includes("UNIQUE constraint")) {
+    console.error("inviteMember error:", err);
+    const msg = String(err?.message || err || "");
+    if (msg.includes("UNIQUE constraint") || msg.includes("UNIQUE_CONSTRAINT") || msg.includes("unique")) {
       return { error: "このメールアドレスにはすでに招待を送信しています" };
     }
     return { error: "招待の送信に失敗しました" };
