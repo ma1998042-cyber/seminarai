@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { emailCampaigns } from "../schema";
 import type { Database } from "..";
 
@@ -73,4 +73,23 @@ export async function updateCampaign(
     .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.organizationId, orgId)))
     .returning();
   return campaign;
+}
+
+export async function deleteCampaign(
+  db: Database,
+  orgId: string,
+  id: string,
+  allowedStatuses: string[] = ["draft", "canceled"],
+) {
+  const [deleted] = await db
+    .delete(emailCampaigns)
+    .where(
+      and(
+        eq(emailCampaigns.id, id),
+        eq(emailCampaigns.organizationId, orgId),
+        inArray(emailCampaigns.status, allowedStatuses),
+      ),
+    )
+    .returning();
+  return deleted;
 }
