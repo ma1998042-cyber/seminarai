@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { invitations } from "../schema";
 import type { Database } from "..";
 
@@ -28,6 +28,17 @@ export async function getInvitationByToken(db: Database, token: string) {
     where: eq(invitations.token, token),
     with: { organization: true },
   });
+}
+
+export async function getPendingInvitationsByEmail(db: Database, email: string) {
+  const now = new Date().toISOString();
+  return db.query.invitations.findMany({
+    where: and(
+      eq(invitations.email, email),
+      isNull(invitations.acceptedAt),
+    ),
+    with: { organization: true },
+  }).then(rows => rows.filter(r => r.expiresAt >= now));
 }
 
 export async function deleteInvitation(db: Database, id: string) {

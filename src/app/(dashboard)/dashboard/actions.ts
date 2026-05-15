@@ -9,6 +9,7 @@ import { plans } from '@/lib/db/schema'
 import { createOrganization } from '@/lib/db/queries/organizations'
 import { addOrganizationMember } from '@/lib/db/queries/organizations'
 import { upsertUserProfile } from '@/lib/db/queries/users'
+import { getInvitationByToken, acceptInvitation } from '@/lib/db/queries/invitations'
 import { generateSlug } from '@/lib/utils'
 
 export async function createOrganizationFromDashboard(orgName: string, orgType: string) {
@@ -53,4 +54,39 @@ export async function createOrganizationFromDashboard(orgName: string, orgType: 
 
   revalidatePath('/dashboard')
   return { orgId: org.id }
+}
+
+export async function acceptInvitationFromDashboard(token: string) {
+  const auth = getAuth()
+  const headersList = await headers()
+  const session = await auth.api.getSession({ headers: headersList })
+  const user = session?.user
+  if (!user) return { error: 'ログインが必要です' }
+
+  const db = getDbFromContext()
+  const invitation = await getInvitationByToken(db, token)
+
+  if (!invitation) return { error: '招待が見つかりません。' }
+  if (invitation.acceptedAt) return { error: 'この招待はすでに使用されています。' }
+
+  const now = new Date().toISOString()
+  if (invitation.expiresAt < now) return { error: '招待の有効期限が切れています。' }
+
+  await acceptInvitation(db, invitation.id)
+  await addOrganizationMember(db, {
+    organizationId: invitation.organizationId,
+    userId: user.id,
+    role: invitation.role,
+    invitedBy: invitation.invitedBy || undefined,
+    invitedAt: invitation.createdAt,
+    joinedAt: now,
+  })
+
+  await upsertUserProfile(db, user.id, {
+    currentOrganizationId: invitation.organizationId,
+    onboardingCompleted: true,
+  })
+
+  revalidatePath('/dashboard')
+  return { success: true }
 }

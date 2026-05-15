@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
+import { getPendingInvitationsByEmail } from "@/lib/db/queries/invitations";
 import { events, customers, surveys, emailCampaigns } from "@/lib/db/schema";
 import CreateOrgCard from "./CreateOrgCard";
 import {
@@ -29,7 +30,17 @@ export default async function DashboardPage() {
   const profile = await getUserProfile(db, user.id);
 
   const orgId = profile?.currentOrganizationId;
-  if (!orgId) return <CreateOrgCard />;
+  if (!orgId) {
+    const invitations = user.email
+      ? await getPendingInvitationsByEmail(db, user.email)
+      : [];
+    const pendingInvitations = invitations.map((inv) => ({
+      token: inv.token,
+      role: inv.role,
+      organizationName: inv.organization.name,
+    }));
+    return <CreateOrgCard pendingInvitations={pendingInvitations} />;
+  }
 
   // Fetch stats (counts)
   const [eventsResult, customersResult, surveysResult, campaignsResult] = await Promise.all([
