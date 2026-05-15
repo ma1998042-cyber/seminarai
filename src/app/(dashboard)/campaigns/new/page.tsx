@@ -5,13 +5,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Mail, Users, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getTagsForOrg, createCampaignAction } from "./actions";
+import { getTagsForOrg, createCampaignAction, getCustomersByTarget } from "./actions";
 
 export default function NewCampaignPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tags, setTags] = useState<any[]>([]);
+
+  const [previewCustomers, setPreviewCustomers] = useState<
+    { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
+  >([]);
+  const [previewTotal, setPreviewTotal] = useState(0);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -30,6 +36,28 @@ export default function NewCampaignPage() {
     };
     fetchTags();
   }, []);
+
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (form.target_type === "tag" && form.target_tag_ids.length === 0) {
+        setPreviewCustomers([]);
+        setPreviewTotal(0);
+        return;
+      }
+      setPreviewLoading(true);
+      try {
+        const result = await getCustomersByTarget(form.target_type, form.target_tag_ids);
+        setPreviewCustomers(result.customers);
+        setPreviewTotal(result.total);
+      } catch {
+        setPreviewCustomers([]);
+        setPreviewTotal(0);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+    fetchPreview();
+  }, [form.target_type, form.target_tag_ids]);
 
   const toggleTagSelection = (tagId: string) => {
     setForm((prev) => ({
@@ -194,6 +222,65 @@ export default function NewCampaignPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 顧客プレビュー */}
+          {(form.target_type === "all" || (form.target_type === "tag" && form.target_tag_ids.length > 0)) && (
+            <div className="border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-500" />
+                  <span className="text-sm font-medium text-gray-700">
+                    配信対象: <span className="text-indigo-600 font-semibold">{previewTotal}名</span>
+                  </span>
+                </div>
+                {previewLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+              </div>
+              {previewCustomers.length > 0 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-500 text-xs">
+                        <th className="text-left px-4 py-2 font-medium">名前</th>
+                        <th className="text-left px-4 py-2 font-medium">メールアドレス</th>
+                        <th className="text-left px-4 py-2 font-medium">タグ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {previewCustomers.map((customer) => (
+                        <tr key={customer.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-900">
+                            {customer.fullName || <span className="text-gray-400">未設定</span>}
+                          </td>
+                          <td className="px-4 py-2 text-gray-600">{customer.email}</td>
+                          <td className="px-4 py-2">
+                            <div className="flex flex-wrap gap-1">
+                              {customer.tags.map((tag, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                                  style={{ backgroundColor: tag.color }}
+                                >
+                                  {tag.name}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {previewTotal > 50 && (
+                    <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 text-center border-t border-gray-100">
+                      他 {previewTotal - 50}名
+                    </div>
+                  )}
+                </div>
+              )}
+              {!previewLoading && previewCustomers.length === 0 && (
+                <p className="text-sm text-gray-400">対象の顧客が見つかりません</p>
+              )}
             </div>
           )}
         </div>
