@@ -5,7 +5,7 @@ import { getDbFromContext } from "@/lib/db";
 import { getUserProfile, updateUserProfile } from "@/lib/db/queries/users";
 import { getOrganizationById, updateOrganization } from "@/lib/db/queries/organizations";
 import { createInvitation, deleteInvitation } from "@/lib/db/queries/invitations";
-import { getOrganizationMembers } from "@/lib/db/queries/organizations";
+import { getOrganizationMembers, updateMemberRole as updateMemberRoleDb, removeMember as removeMemberDb } from "@/lib/db/queries/organizations";
 import { getOrganizationById as getOrgById2 } from "@/lib/db/queries/organizations";
 import { sendEmail } from "@/lib/email";
 import { headers } from "next/headers";
@@ -151,6 +151,92 @@ export async function inviteMember(
       return { error: "このメールアドレスにはすでに招待を送信しています" };
     }
     return { error: "招待の送信に失敗しました" };
+  }
+}
+
+// =============================================
+// メンバーロール変更
+// =============================================
+
+export async function changeMemberRole(memberId: string, newRole: string) {
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
+  if (!user) return { error: "ログインが必要です" };
+
+  const validRoles = ["admin", "editor", "viewer"];
+  if (!validRoles.includes(newRole)) return { error: "無効なロールです" };
+
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  if (!profile?.currentOrganizationId) return { error: "組織が見つかりません" };
+
+  const members = await getOrganizationMembers(db, profile.currentOrganizationId);
+  const currentMember = members.find((m) => m.userId === user.id);
+  if (!currentMember || !["owner", "admin"].includes(currentMember.role)) {
+    return { error: "権限がありません" };
+  }
+
+  const targetMember = members.find((m) => m.id === memberId);
+  if (!targetMember) return { error: "メンバーが見つかりません" };
+
+  // オーナーのロールは変更不可
+  if (targetMember.role === "owner") return { error: "オーナーのロールは変更できません" };
+
+  // adminはadminのロールを変更できない（ownerのみ可）
+  if (targetMember.role === "admin" && currentMember.role !== "owner") {
+    return { error: "管理者のロールはオーナーのみ変更できます" };
+  }
+
+  try {
+    await updateMemberRoleDb(db, memberId, newRole);
+    revalidatePath("/settings/members");
+    return { success: true };
+  } catch {
+    return { error: "ロールの変更に失敗しました" };
+  }
+}
+
+// =============================================
+// メンバー除外
+// =============================================
+
+export async function removeMemberFromOrg(memberId: string) {
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
+  if (!user) return { error: "ログインが必要です" };
+
+  const db = getDbFromContext();
+  const profile = await getUserProfile(db, user.id);
+  if (!profile?.currentOrganizationId) return { error: "組織が見つかりません" };
+
+  const members = await getOrganizationMembers(db, profile.currentOrganizationId);
+  const currentMember = members.find((m) => m.userId === user.id);
+  if (!currentMember || !["owner", "admin"].includes(currentMember.role)) {
+    return { error: "権限がありません" };
+  }
+
+  const targetMember = members.find((m) => m.id === memberId);
+  if (!targetMember) return { error: "メンバーが見つかりません" };
+
+  // 自分自身は除外できない
+  if (targetMember.userId === user.id) return { error: "自分自身を除外することはできません" };
+
+  // オーナーは除外できない
+  if (targetMember.role === "owner") return { error: "オーナーを除外することはできません" };
+
+  // adminはadminを除外できない（ownerのみ可）
+  if (targetMember.role === "admin" && currentMember.role !== "owner") {
+    return { error: "管理者の除外はオーナーのみ可能です" };
+  }
+
+  try {
+    await removeMemberDb(db, memberId);
+    revalidatePath("/settings/members");
+    return { success: true };
+  } catch {
+    return { error: "メンバーの除外に失敗しました" };
   }
 }
 

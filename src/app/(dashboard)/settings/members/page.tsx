@@ -11,6 +11,7 @@ import { formatDate, ROLE_LABELS, getInitials } from "@/lib/utils";
 import InviteMemberForm from "./InviteMemberForm";
 import CopyInviteLinkButton from "./CopyInviteLinkButton";
 import CancelInvitationButton from "./CancelInvitationButton";
+import MemberActions from "./MemberActions";
 
 export default async function MembersPage() {
   const auth = getAuth();
@@ -90,10 +91,19 @@ export default async function MembersPage() {
                     <p className="text-xs text-gray-400">参加日：{formatDate(member.joinedAt || member.createdAt)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {roleIcons[member.role]}
-                  <span className="text-sm text-gray-600">{ROLE_LABELS[member.role] || member.role}</span>
-                </div>
+                {canManage && !isCurrentUser ? (
+                  <MemberActions
+                    memberId={member.id}
+                    currentRole={member.role}
+                    memberName={name}
+                    currentUserRole={currentUserRole}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {roleIcons[member.role]}
+                    <span className="text-sm text-gray-600">{ROLE_LABELS[member.role] || member.role}</span>
+                  </div>
+                )}
               </div>
             );
           })}

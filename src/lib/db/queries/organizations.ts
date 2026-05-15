@@ -114,6 +114,23 @@ export async function getUserOrgRole(db: Database, orgId: string, userId: string
   return member?.role ?? null;
 }
 
+export async function updateMemberRole(db: Database, memberId: string, role: string) {
+  const [member] = await db
+    .update(organizationMembers)
+    .set({ role, updatedAt: new Date().toISOString() })
+    .where(eq(organizationMembers.id, memberId))
+    .returning();
+  return member;
+}
+
+export async function removeMember(db: Database, memberId: string) {
+  const [member] = await db
+    .delete(organizationMembers)
+    .where(eq(organizationMembers.id, memberId))
+    .returning();
+  return member;
+}
+
 export async function isOrgMember(db: Database, orgId: string, userId: string) {
   const member = await db.query.organizationMembers.findFirst({
     where: and(
