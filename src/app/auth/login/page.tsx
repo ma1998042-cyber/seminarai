@@ -48,7 +48,7 @@ function LoginForm() {
           <h1 className="mt-6 text-2xl font-bold text-gray-900">ログイン</h1>
           <p className="mt-2 text-sm text-gray-500">
             アカウントをお持ちでない方は{" "}
-            <Link href="/auth/register" className="text-indigo-600 hover:underline font-medium">
+            <Link href={next !== "/events" ? `/auth/register?next=${encodeURIComponent(next)}` : "/auth/register"} className="text-indigo-600 hover:underline font-medium">
               無料登録
             </Link>
           </p>

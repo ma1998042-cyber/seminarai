@@ -1,9 +1,8 @@
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
-import { getInvitationByToken, acceptInvitation } from "@/lib/db/queries/invitations";
-import { addOrganizationMember } from "@/lib/db/queries/organizations";
+import { getInvitationByToken } from "@/lib/db/queries/invitations";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ROLE_LABELS } from "@/lib/utils";
 import AcceptInvitationButton from "./AcceptInvitationButton";
 
@@ -16,11 +15,6 @@ export default async function InvitePage({ params }: Props) {
 
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
-
-  // 未ログインならログインページへリダイレクト
-  if (!session?.user) {
-    redirect(`/auth/login?next=/invite/${token}`);
-  }
 
   const db = getDbFromContext();
   const invitation = await getInvitationByToken(db, token);
@@ -103,6 +97,42 @@ export default async function InvitePage({ params }: Props) {
 
   const orgName = invitation.organization?.name || "組織";
   const roleName = ROLE_LABELS[invitation.role] || invitation.role;
+
+  // 未ログインの場合はログイン/新規登録の選択肢を表示
+  if (!session?.user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-gray-100 p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto">
+              <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">組織への招待</h1>
+            <p className="text-sm text-gray-500">
+              <span className="font-semibold text-gray-900">{orgName}</span> に{roleName}として招待されています
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Link
+              href={`/auth/login?next=/invite/${token}`}
+              className="block w-full px-6 py-3 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors text-center"
+            >
+              ログインして参加する
+            </Link>
+            <Link
+              href={`/auth/register?next=/invite/${token}`}
+              className="block w-full px-6 py-3 border border-gray-200 text-sm font-medium text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-center"
+            >
+              新規登録して参加する
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

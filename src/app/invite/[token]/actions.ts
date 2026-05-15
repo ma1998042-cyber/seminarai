@@ -4,6 +4,7 @@ import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getInvitationByToken, acceptInvitation } from "@/lib/db/queries/invitations";
 import { addOrganizationMember } from "@/lib/db/queries/organizations";
+import { upsertUserProfile } from "@/lib/db/queries/users";
 import { headers } from "next/headers";
 
 export async function acceptInvitationAction(invitationId: string, token: string) {
@@ -43,6 +44,11 @@ export async function acceptInvitationAction(invitationId: string, token: string
     invitedBy: invitation.invitedBy || undefined,
     invitedAt: invitation.createdAt,
     joinedAt: now,
+  });
+
+  // 参加した組織をカレント組織に設定
+  await upsertUserProfile(db, session.user.id, {
+    currentOrganizationId: invitation.organizationId,
   });
 
   return { success: true };
