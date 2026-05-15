@@ -4,7 +4,8 @@ import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile, updateUserProfile } from "@/lib/db/queries/users";
 import { getOrganizationById, updateOrganization } from "@/lib/db/queries/organizations";
-import { createInvitation } from "@/lib/db/queries/invitations";
+import { createInvitation, deleteInvitation } from "@/lib/db/queries/invitations";
+import { getOrganizationMembers } from "@/lib/db/queries/organizations";
 import { getOrganizationById as getOrgById2 } from "@/lib/db/queries/organizations";
 import { sendEmail } from "@/lib/email";
 import { headers } from "next/headers";
@@ -150,5 +151,36 @@ export async function inviteMember(
       return { error: "このメールアドレスにはすでに招待を送信しています" };
     }
     return { error: "招待の送信に失敗しました" };
+  }
+}
+
+// =============================================
+// 招待取り消し
+// =============================================
+
+export async function cancelInvitation(invitationId: string) {
+  const auth = getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
+  if (!user) return { error: "ログインが必要です" };
+
+  const db = getDbFromContext();
+
+  const profile = await getUserProfile(db, user.id);
+  if (!profile?.currentOrganizationId) return { error: "組織が見つかりません" };
+
+  // owner/admin のみ取り消し可能
+  const members = await getOrganizationMembers(db, profile.currentOrganizationId);
+  const currentMember = members.find((m) => m.userId === user.id);
+  if (!currentMember || !["owner", "admin"].includes(currentMember.role)) {
+    return { error: "権限がありません" };
+  }
+
+  try {
+    await deleteInvitation(db, invitationId);
+    revalidatePath("/settings/members");
+    return { success: true };
+  } catch {
+    return { error: "招待の取り消しに失敗しました" };
   }
 }

@@ -30,6 +30,10 @@ export async function getInvitationByToken(db: Database, token: string) {
   });
 }
 
+export async function deleteInvitation(db: Database, id: string) {
+  await db.delete(invitations).where(eq(invitations.id, id));
+}
+
 export async function acceptInvitation(db: Database, id: string) {
   const [invitation] = await db
     .update(invitations)

@@ -10,6 +10,7 @@ import { ArrowLeft, UserPlus, Crown, Settings, Edit, Eye, Users } from "lucide-r
 import { formatDate, ROLE_LABELS, getInitials } from "@/lib/utils";
 import InviteMemberForm from "./InviteMemberForm";
 import CopyInviteLinkButton from "./CopyInviteLinkButton";
+import CancelInvitationButton from "./CancelInvitationButton";
 
 export default async function MembersPage() {
   const auth = getAuth();
@@ -118,6 +119,7 @@ export default async function MembersPage() {
                 <div className="flex items-center gap-2">
                   <CopyInviteLinkButton token={inv.token} />
                   <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">保留中</span>
+                  {canManage && <CancelInvitationButton invitationId={inv.id} />}
                 </div>
               </div>
             ))}
