@@ -110,6 +110,7 @@ export const events = sqliteTable("events", {
   isOnline: integer("is_online", { mode: "boolean" }).notNull().default(false),
   onlineUrl: text("online_url"),
   capacity: integer("capacity"),
+  showRemainingCapacity: integer("show_remaining_capacity").notNull().default(0),
   registrationCount: integer("registration_count").notNull().default(0),
   visibility: text("visibility").notNull().default("draft"),
   thumbnailUrl: text("thumbnail_url"),
@@ -219,6 +220,7 @@ export const surveys = sqliteTable("surveys", {
   createdBy: text("created_by"),
   publishedAt: text("published_at"),
   closedAt: text("closed_at"),
+  deadline: integer("deadline"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 }, (table) => [
