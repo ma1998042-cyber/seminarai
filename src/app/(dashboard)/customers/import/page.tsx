@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Upload, ChevronRight, CheckCircle, Loader2, FileText,
-  X, CalendarDays, ArrowLeft,
+  X, CalendarDays, ArrowLeft, Download, Info,
 } from "lucide-react";
 import { getOrgAndEvents, importCustomers } from "./actions";
 
@@ -19,6 +19,21 @@ const CUSTOMER_FIELDS = [
 ] as const;
 
 type FieldKey = typeof CUSTOMER_FIELDS[number]["key"];
+
+const SAMPLE_CSV = `メールアドレス,氏名,電話番号,会社名,役職
+taro@example.com,山田太郎,090-1234-5678,株式会社サンプル,部長
+hanako@example.com,鈴木花子,080-9876-5432,テスト株式会社,課長`;
+
+function downloadSampleCsv() {
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + SAMPLE_CSV], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sample_customers.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -210,6 +225,40 @@ export default function ImportPage() {
         {/* Step 1: Upload */}
         {step === 1 && (
           <div className="space-y-5">
+            {/* Format guide */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2 mb-2">
+                <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <h3 className="text-sm font-semibold text-blue-800">CSVデータ形式</h3>
+              </div>
+              <p className="text-xs text-blue-700 mb-2">1行目をヘッダー行として認識します。次の列に対応しています：</p>
+              <div className="overflow-x-auto rounded border border-blue-200 bg-white mb-3">
+                <table className="text-xs w-full">
+                  <thead className="bg-blue-50">
+                    <tr>
+                      <th className="px-3 py-1.5 text-left text-blue-700 font-medium">フィールド</th>
+                      <th className="px-3 py-1.5 text-left text-blue-700 font-medium">必須</th>
+                      <th className="px-3 py-1.5 text-left text-blue-700 font-medium">認識されるヘッダー例</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-blue-100">
+                    <tr><td className="px-3 py-1.5 text-gray-700">メールアドレス</td><td className="px-3 py-1.5 text-red-500 font-medium">必須</td><td className="px-3 py-1.5 text-gray-500">email, メール, mail, e-mail</td></tr>
+                    <tr><td className="px-3 py-1.5 text-gray-700">氏名</td><td className="px-3 py-1.5 text-gray-400">任意</td><td className="px-3 py-1.5 text-gray-500">name, 氏名, 名前, お名前</td></tr>
+                    <tr><td className="px-3 py-1.5 text-gray-700">電話番号</td><td className="px-3 py-1.5 text-gray-400">任意</td><td className="px-3 py-1.5 text-gray-500">phone, tel, 電話, mobile</td></tr>
+                    <tr><td className="px-3 py-1.5 text-gray-700">会社名</td><td className="px-3 py-1.5 text-gray-400">任意</td><td className="px-3 py-1.5 text-gray-500">company, 会社, 企業</td></tr>
+                    <tr><td className="px-3 py-1.5 text-gray-700">役職</td><td className="px-3 py-1.5 text-gray-400">任意</td><td className="px-3 py-1.5 text-gray-500">job, title, 役職, position</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <button
+                onClick={downloadSampleCsv}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                サンプルCSVをダウンロード
+              </button>
+            </div>
+
             <div
               onDrop={onDrop}
               onDragOver={(e) => e.preventDefault()}
