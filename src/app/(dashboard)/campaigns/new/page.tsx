@@ -1,18 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList, FileText } from "lucide-react";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
-import { getTagsForOrg, getSurveysForOrg, createCampaignAction, getCustomersByTarget } from "./actions";
+import { getTagsForOrg, getSurveysForOrg, createCampaignAction, getCustomersByTarget, getTemplatesForOrg } from "./actions";
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tags, setTags] = useState<any[]>([]);
   const [surveysList, setSurveysList] = useState<{ id: string; title: string; category: string; responseCount: number }[]>([]);
+  const [templates, setTemplates] = useState<{ id: string; name: string; subject: string; previewText: string | null; bodyHtml: string }[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   const [previewCustomers, setPreviewCustomers] = useState<
     { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
@@ -33,12 +36,32 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [tagsData, surveysData] = await Promise.all([getTagsForOrg(), getSurveysForOrg()]);
+      const [tagsData, surveysData, templatesData] = await Promise.all([
+        getTagsForOrg(),
+        getSurveysForOrg(),
+        getTemplatesForOrg(),
+      ]);
       setTags(tagsData);
       setSurveysList(surveysData);
+      setTemplates(templatesData);
+
+      // クエリパラメータでテンプレートIDが指定されている場合、自動適用
+      const templateId = searchParams.get("template");
+      if (templateId) {
+        const tmpl = templatesData.find((t) => t.id === templateId);
+        if (tmpl) {
+          setSelectedTemplateId(tmpl.id);
+          setForm((prev) => ({
+            ...prev,
+            subject: tmpl.subject,
+            preview_text: tmpl.previewText ?? "",
+            body_html: tmpl.bodyHtml,
+          }));
+        }
+      }
     };
     fetchData();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchPreview = async () => {
@@ -116,6 +139,45 @@ export default function NewCampaignPage() {
       )}
 
       <div className="space-y-4">
+        {/* テンプレート選択 */}
+        {templates.length > 0 && (
+          <div className="bg-amber-50 rounded-2xl border border-amber-200 p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-amber-600" />
+              <h2 className="font-semibold text-amber-900">テンプレートから作成</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => {
+                  const tmplId = e.target.value;
+                  setSelectedTemplateId(tmplId);
+                  if (tmplId) {
+                    const tmpl = templates.find((t) => t.id === tmplId);
+                    if (tmpl) {
+                      setForm((prev) => ({
+                        ...prev,
+                        subject: tmpl.subject,
+                        preview_text: tmpl.previewText ?? "",
+                        body_html: tmpl.bodyHtml,
+                      }));
+                    }
+                  }
+                }}
+                className="flex-1 px-4 py-3 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-sm"
+              >
+                <option value="">テンプレートを選択...</option>
+                {templates.map((tmpl) => (
+                  <option key={tmpl.id} value={tmpl.id}>
+                    {tmpl.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-amber-600">テンプレートを選択すると件名・プレビューテキスト・本文が自動入力されます</p>
+          </div>
+        )}
+
         {/* Basic info */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">基本情報</h2>

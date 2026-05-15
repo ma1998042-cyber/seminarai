@@ -7,7 +7,7 @@ import { getUserProfile } from '@/lib/db/queries/users'
 import { createCampaign } from '@/lib/db/queries/campaigns'
 import { getTags } from '@/lib/db/queries/tags'
 import { getCustomers } from '@/lib/db/queries/customers'
-import { customerTags, customers, surveyResponses, surveys } from '@/lib/db/schema'
+import { customerTags, customers, emailTemplates, surveyResponses, surveys } from '@/lib/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
@@ -210,4 +210,22 @@ export async function getCustomersByTarget(
     })),
     total,
   }
+}
+
+export async function getTemplatesForOrg(): Promise<{ id: string; name: string; subject: string; previewText: string | null; bodyHtml: string }[]> {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
+  if (!user) return []
+
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  if (!profile?.currentOrganizationId) return []
+
+  const templates = await db.query.emailTemplates.findMany({
+    where: eq(emailTemplates.organizationId, profile.currentOrganizationId),
+    columns: { id: true, name: true, subject: true, previewText: true, bodyHtml: true },
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+  })
+  return templates
 }

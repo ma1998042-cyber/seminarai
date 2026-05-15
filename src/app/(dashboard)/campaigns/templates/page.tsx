@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, FileText, Pencil } from "lucide-react";
+import { Plus, FileText, Pencil, Send } from "lucide-react";
 import CampaignNav from "@/components/campaigns/CampaignNav";
 import { formatDate } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
@@ -56,6 +56,13 @@ export default async function TemplatesPage() {
                 <p className="text-xs text-gray-400 mt-1">{formatDate(tmpl.createdAt)}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                <Link
+                  href={`/campaigns/new?template=${tmpl.id}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  配信作成
+                </Link>
                 <Link
                   href={`/campaigns/templates/${tmpl.id}`}
                   className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
