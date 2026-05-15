@@ -6,13 +6,37 @@ import type { Database } from "..";
 // イベント CRUD（組織スコープ付き）
 // =============================================
 
-export async function getEvents(db: Database, orgId: string, visibility?: string) {
+export async function getEvents(
+  db: Database,
+  orgId: string,
+  options?: {
+    visibility?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  const where = options?.visibility
+    ? and(eq(events.organizationId, orgId), eq(events.visibility, options.visibility))
+    : eq(events.organizationId, orgId);
+
   return db.query.events.findMany({
-    where: visibility
-      ? and(eq(events.organizationId, orgId), eq(events.visibility, visibility))
-      : eq(events.organizationId, orgId),
+    where,
     orderBy: (events, { desc }) => [desc(events.createdAt)],
+    ...(options?.limit !== undefined && { limit: options.limit }),
+    ...(options?.offset !== undefined && { offset: options.offset }),
   });
+}
+
+export async function countEvents(db: Database, orgId: string, visibility?: string) {
+  const conditions = [eq(events.organizationId, orgId)];
+  if (visibility) {
+    conditions.push(eq(events.visibility, visibility));
+  }
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(events)
+    .where(and(...conditions));
+  return Number(result[0]?.count ?? 0);
 }
 
 export async function getEventById(db: Database, orgId: string, id: string) {

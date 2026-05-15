@@ -6,7 +6,10 @@ import { formatDate, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LA
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
-import { getEvents } from "@/lib/db/queries/events";
+import { getEvents, countEvents } from "@/lib/db/queries/events";
+import Pagination from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-600",
@@ -31,9 +34,10 @@ const visibilityTabs = [
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ visibility?: string }>;
+  searchParams: Promise<{ visibility?: string; page?: string }>;
 }) {
-  const { visibility } = await searchParams;
+  const { visibility, page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
   const user = session?.user;
@@ -44,7 +48,15 @@ export default async function EventsPage({
   const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const events = await getEvents(db, orgId, visibility || undefined);
+  const [events, totalCount] = await Promise.all([
+    getEvents(db, orgId, {
+      visibility: visibility || undefined,
+      limit: PAGE_SIZE,
+      offset: (currentPage - 1) * PAGE_SIZE,
+    }),
+    countEvents(db, orgId, visibility || undefined),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -147,6 +159,8 @@ export default async function EventsPage({
           </Link>
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalPages={totalPages} />
     </div>
   );
 }
