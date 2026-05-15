@@ -11,6 +11,7 @@ import { customerTags, customers, emailSends, surveyResponses, surveys, emailCam
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
+import { addTrackingPixel, rewriteLinks } from '@/lib/email/tracking'
 
 async function getSessionAndOrg() {
   const auth = getAuth()
@@ -51,10 +52,32 @@ export async function getCampaignDetail(id: string) {
     targetSurveyName = survey?.title ?? null
   }
 
+  // email_sends から開封数・クリック数を集計
+  const [openCountRow] = await ctx.db
+    .select({ count: sql<number>`count(*)` })
+    .from(emailSends)
+    .where(
+      and(
+        eq(emailSends.campaignId, id),
+        sql`${emailSends.openedAt} is not null`,
+      ),
+    )
+  const [clickCountRow] = await ctx.db
+    .select({ count: sql<number>`count(*)` })
+    .from(emailSends)
+    .where(
+      and(
+        eq(emailSends.campaignId, id),
+        sql`${emailSends.clickedAt} is not null`,
+      ),
+    )
+
   return {
     ...campaign,
     targetTagNames,
     targetSurveyName,
+    openCount: openCountRow?.count ?? 0,
+    clickCount: clickCountRow?.count ?? 0,
   }
 }
 
@@ -131,28 +154,55 @@ export async function updateCampaignAction(
         return { error: '配信対象の顧客が見つかりません' }
       }
 
+      // baseUrl をヘッダーから取得
+      const hdrs = await headers()
+      const host = hdrs.get('host') || 'localhost:3000'
+      const proto = hdrs.get('x-forwarded-proto') || 'https'
+      const baseUrl = `${proto}://${host}`
+
       let sentCount = 0
       for (const recipient of emails) {
         try {
-          await sendEmail(recipient.email, form.subject, form.body_html)
-          await ctx.db.insert(emailSends).values({
-            campaignId: id,
-            organizationId: ctx.orgId,
-            customerId: recipient.customerId,
-            email: recipient.email,
-            status: 'sent',
-            sentAt: new Date().toISOString(),
-          })
+          // 先に pending で insert して id を取得
+          const sendRecord = await ctx.db
+            .insert(emailSends)
+            .values({
+              campaignId: id,
+              organizationId: ctx.orgId,
+              customerId: recipient.customerId,
+              email: recipient.email,
+              status: 'pending',
+            })
+            .returning({ id: emailSends.id })
+
+          const sendId = sendRecord[0].id
+
+          // トラッキング付きHTMLを生成
+          let trackedHtml = addTrackingPixel(form.body_html, sendId, baseUrl)
+          trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl)
+
+          await sendEmail(recipient.email, form.subject, trackedHtml)
+
+          // 成功 → sent に更新
+          await ctx.db
+            .update(emailSends)
+            .set({ status: 'sent', sentAt: new Date().toISOString() })
+            .where(eq(emailSends.id, sendId))
           sentCount++
         } catch {
-          await ctx.db.insert(emailSends).values({
-            campaignId: id,
-            organizationId: ctx.orgId,
-            customerId: recipient.customerId,
-            email: recipient.email,
-            status: 'failed',
-            errorMessage: 'メール送信に失敗しました',
-          })
+          // pending が既に入っている場合もあるため insert を試みる
+          try {
+            await ctx.db.insert(emailSends).values({
+              campaignId: id,
+              organizationId: ctx.orgId,
+              customerId: recipient.customerId,
+              email: recipient.email,
+              status: 'failed',
+              errorMessage: 'メール送信に失敗しました',
+            })
+          } catch {
+            // pending レコードが既に存在する場合は無視
+          }
         }
       }
 

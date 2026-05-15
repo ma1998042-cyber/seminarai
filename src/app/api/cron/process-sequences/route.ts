@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { sendEmail } from "@/lib/email";
+import { addTrackingPixel, rewriteLinks } from "@/lib/email/tracking";
 
 export async function GET(request: NextRequest) {
   // 認証: CRON_SECRET で照合
@@ -95,18 +96,34 @@ export async function GET(request: NextRequest) {
           if (diffDays < step.delayDays) continue;
 
           try {
-            // メール送信
-            await sendEmail(customerEmail, step.subject, step.bodyHtml);
+            const baseUrl = new URL(request.url).origin;
 
-            // 送信ログを emailSends に記録
-            await db.insert(emailSends).values({
-              campaignId: campaign.id,
-              organizationId: campaign.organizationId,
-              customerId: enrollment.customerId,
-              email: customerEmail,
-              status: "sent",
-              sentAt: new Date().toISOString(),
-            });
+            // 先に pending で insert して id を取得
+            const sendRecord = await db
+              .insert(emailSends)
+              .values({
+                campaignId: campaign.id,
+                organizationId: campaign.organizationId,
+                customerId: enrollment.customerId,
+                email: customerEmail,
+                status: "pending",
+              })
+              .returning({ id: emailSends.id });
+
+            const sendId = sendRecord[0].id;
+
+            // トラッキング付きHTMLを生成
+            let trackedHtml = addTrackingPixel(step.bodyHtml, sendId, baseUrl);
+            trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl);
+
+            // メール送信
+            await sendEmail(customerEmail, step.subject, trackedHtml);
+
+            // 成功 → sent に更新
+            await db
+              .update(emailSends)
+              .set({ status: "sent", sentAt: new Date().toISOString() })
+              .where(eq(emailSends.id, sendId));
 
             // currentStep をインクリメント
             const nextStep = currentStepIndex + 1;

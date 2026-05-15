@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, inArray, lte, sql } from "drizzle-orm";
 import { sendEmail } from "@/lib/email";
+import { addTrackingPixel, rewriteLinks } from "@/lib/email/tracking";
 
 export async function GET(request: NextRequest) {
   // 認証: CRON_SECRET で照合
@@ -93,34 +94,58 @@ export async function GET(request: NextRequest) {
         let sentCount = 0;
         let failedCount = 0;
 
+        const baseUrl = new URL(request.url).origin;
+
         for (const recipient of pendingRecipients) {
           try {
-            await sendEmail(
-              recipient.email,
-              campaign.subject,
+            // 先に pending で insert して id を取得
+            const sendRecord = await db
+              .insert(emailSends)
+              .values({
+                campaignId: campaign.id,
+                organizationId: campaign.organizationId,
+                customerId: recipient.customerId,
+                email: recipient.email,
+                status: "pending",
+              })
+              .returning({ id: emailSends.id });
+
+            const sendId = sendRecord[0].id;
+
+            // トラッキング付きHTMLを生成
+            let trackedHtml = addTrackingPixel(
               campaign.bodyHtml,
+              sendId,
+              baseUrl,
             );
-            await db.insert(emailSends).values({
-              campaignId: campaign.id,
-              organizationId: campaign.organizationId,
-              customerId: recipient.customerId,
-              email: recipient.email,
-              status: "sent",
-              sentAt: new Date().toISOString(),
-            });
+            trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl);
+
+            await sendEmail(recipient.email, campaign.subject, trackedHtml);
+
+            // 成功 → sent に更新
+            await db
+              .update(emailSends)
+              .set({ status: "sent", sentAt: new Date().toISOString() })
+              .where(eq(emailSends.id, sendId));
             sentCount++;
           } catch (err) {
-            await db.insert(emailSends).values({
-              campaignId: campaign.id,
-              organizationId: campaign.organizationId,
-              customerId: recipient.customerId,
-              email: recipient.email,
-              status: "failed",
-              errorMessage:
-                err instanceof Error
-                  ? err.message
-                  : "メール送信に失敗しました",
-            });
+            // pending レコードが既にあれば failed に更新、なければ insert
+            // (insert 自体が失敗した場合のフォールバック)
+            try {
+              await db.insert(emailSends).values({
+                campaignId: campaign.id,
+                organizationId: campaign.organizationId,
+                customerId: recipient.customerId,
+                email: recipient.email,
+                status: "failed",
+                errorMessage:
+                  err instanceof Error
+                    ? err.message
+                    : "メール送信に失敗しました",
+              });
+            } catch {
+              // pending レコードが既に存在する場合
+            }
             failedCount++;
           }
         }
