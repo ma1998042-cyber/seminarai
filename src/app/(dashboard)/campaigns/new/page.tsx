@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Mail, Users, Tag } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getTagsForOrg, createCampaignAction, getCustomersByTarget } from "./actions";
+import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList } from "lucide-react";
+import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
+import { getTagsForOrg, getSurveysForOrg, createCampaignAction, getCustomersByTarget } from "./actions";
 
 export default function NewCampaignPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tags, setTags] = useState<any[]>([]);
+  const [surveysList, setSurveysList] = useState<{ id: string; title: string; category: string; responseCount: number }[]>([]);
 
   const [previewCustomers, setPreviewCustomers] = useState<
     { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
@@ -26,15 +27,17 @@ export default function NewCampaignPage() {
     body_html: "",
     target_type: "all",
     target_tag_ids: [] as string[],
+    target_survey_id: "",
     scheduled_at: "",
   });
 
   useEffect(() => {
-    const fetchTags = async () => {
-      const data = await getTagsForOrg();
-      setTags(data);
+    const fetchData = async () => {
+      const [tagsData, surveysData] = await Promise.all([getTagsForOrg(), getSurveysForOrg()]);
+      setTags(tagsData);
+      setSurveysList(surveysData);
     };
-    fetchTags();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -44,9 +47,14 @@ export default function NewCampaignPage() {
         setPreviewTotal(0);
         return;
       }
+      if (form.target_type === "survey_respondents" && !form.target_survey_id) {
+        setPreviewCustomers([]);
+        setPreviewTotal(0);
+        return;
+      }
       setPreviewLoading(true);
       try {
-        const result = await getCustomersByTarget(form.target_type, form.target_tag_ids);
+        const result = await getCustomersByTarget(form.target_type, form.target_tag_ids, form.target_survey_id);
         setPreviewCustomers(result.customers);
         setPreviewTotal(result.total);
       } catch {
@@ -57,7 +65,7 @@ export default function NewCampaignPage() {
       }
     };
     fetchPreview();
-  }, [form.target_type, form.target_tag_ids]);
+  }, [form.target_type, form.target_tag_ids, form.target_survey_id]);
 
   const toggleTagSelection = (tagId: string) => {
     setForm((prev) => ({
@@ -174,6 +182,7 @@ export default function NewCampaignPage() {
             {[
               { value: "all", label: "全顧客", icon: <Users className="w-4 h-4" />, desc: "全員に配信" },
               { value: "tag", label: "タグ指定", icon: <Tag className="w-4 h-4" />, desc: "タグで絞り込み" },
+              { value: "survey_respondents", label: "アンケート回答者", icon: <ClipboardList className="w-4 h-4" />, desc: "回答者に配信" },
             ].map((option) => (
               <button
                 key={option.value}
@@ -225,8 +234,26 @@ export default function NewCampaignPage() {
             </div>
           )}
 
+          {form.target_type === "survey_respondents" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">配信対象のアンケートを選択</label>
+              <select
+                value={form.target_survey_id}
+                onChange={(e) => setForm({ ...form, target_survey_id: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              >
+                <option value="">アンケートを選択してください</option>
+                {surveysList.map((survey) => (
+                  <option key={survey.id} value={survey.id}>
+                    {survey.title}（{SURVEY_CATEGORY_LABELS[survey.category] || survey.category}・{survey.responseCount}件の回答）
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* 顧客プレビュー */}
-          {(form.target_type === "all" || (form.target_type === "tag" && form.target_tag_ids.length > 0)) && (
+          {(form.target_type === "all" || (form.target_type === "tag" && form.target_tag_ids.length > 0) || (form.target_type === "survey_respondents" && form.target_survey_id)) && (
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">

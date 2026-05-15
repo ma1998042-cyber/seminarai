@@ -7,7 +7,7 @@ import { getUserProfile } from '@/lib/db/queries/users'
 import { createCampaign } from '@/lib/db/queries/campaigns'
 import { getTags } from '@/lib/db/queries/tags'
 import { getCustomers } from '@/lib/db/queries/customers'
-import { customerTags, customers } from '@/lib/db/schema'
+import { customerTags, customers, surveyResponses, surveys } from '@/lib/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
@@ -32,6 +32,7 @@ export async function createCampaignAction(form: {
   body_html: string
   target_type: string
   target_tag_ids: string[]
+  target_survey_id: string
   scheduled_at: string
   status: 'draft' | 'scheduled'
 }): Promise<{ campaignId?: string; error?: string }> {
@@ -52,6 +53,7 @@ export async function createCampaignAction(form: {
     bodyHtml: form.body_html,
     targetType: form.target_type,
     targetTagIds: form.target_tag_ids.length > 0 ? form.target_tag_ids : null,
+    targetSurveyId: form.target_survey_id || null,
     status: form.status,
     scheduledAt: form.scheduled_at || undefined,
     createdBy: user.id,
@@ -63,9 +65,28 @@ export async function createCampaignAction(form: {
   return { campaignId: campaign.id }
 }
 
+export async function getSurveysForOrg(): Promise<{ id: string; title: string; category: string; responseCount: number }[]> {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
+  if (!user) return []
+
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  if (!profile?.currentOrganizationId) return []
+
+  const results = await db.query.surveys.findMany({
+    where: eq(surveys.organizationId, profile.currentOrganizationId),
+    columns: { id: true, title: true, category: true, responseCount: true },
+    orderBy: (s, { desc }) => [desc(s.createdAt)],
+  })
+  return results
+}
+
 export async function getCustomersByTarget(
   targetType: string,
   tagIds: string[],
+  surveyId?: string,
 ): Promise<{
   customers: { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
   total: number
@@ -80,6 +101,56 @@ export async function getCustomersByTarget(
   if (!profile?.currentOrganizationId) return { customers: [], total: 0 }
 
   const orgId = profile.currentOrganizationId
+
+  if (targetType === 'survey_respondents' && surveyId) {
+    // アンケート回答者: respondentEmail から顧客を検索
+    const responses = await db
+      .select({ email: surveyResponses.respondentEmail, name: surveyResponses.respondentName })
+      .from(surveyResponses)
+      .where(eq(surveyResponses.surveyId, surveyId))
+
+    const uniqueEmails = [...new Set(responses.filter(r => r.email).map(r => r.email!))]
+    if (uniqueEmails.length === 0) return { customers: [], total: 0 }
+
+    const total = uniqueEmails.length
+    const limitedEmails = uniqueEmails.slice(0, 50)
+
+    // 顧客テーブルに存在するものを取得
+    const results = await db.query.customers.findMany({
+      where: and(
+        eq(customers.organizationId, orgId),
+        inArray(customers.email, limitedEmails),
+      ),
+      with: {
+        customerTags: {
+          with: { tag: true },
+        },
+      },
+    })
+
+    // 顧客テーブルにない回答者も含める
+    const existingEmails = new Set(results.map(c => c.email))
+    const nonCustomerRespondents = responses
+      .filter(r => r.email && !existingEmails.has(r.email))
+      .slice(0, 50 - results.length)
+
+    const allResults = [
+      ...results.map(c => ({
+        id: c.id,
+        fullName: c.fullName,
+        email: c.email,
+        tags: (c.customerTags ?? []).map((ct: any) => ({ name: ct.tag.name, color: ct.tag.color })),
+      })),
+      ...nonCustomerRespondents.map(r => ({
+        id: r.email!,
+        fullName: r.name,
+        email: r.email!,
+        tags: [],
+      })),
+    ]
+
+    return { customers: allResults, total }
+  }
 
   if (targetType === 'tag' && tagIds.length > 0) {
     // タグ指定: 選択タグに紐づく顧客を取得

@@ -30,6 +30,7 @@ export async function createCampaign(
     status?: string;
     targetType?: string;
     targetTagIds?: string[] | null;
+    targetSurveyId?: string | null;
     targetCustomerIds?: string[] | null;
     scheduledAt?: string;
     settings?: Record<string, unknown>;
@@ -53,6 +54,7 @@ export async function updateCampaign(
     status: string;
     targetType: string;
     targetTagIds: string[] | null;
+    targetSurveyId: string | null;
     targetCustomerIds: string[] | null;
     scheduledAt: string | null;
     sentAt: string | null;

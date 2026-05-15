@@ -277,6 +277,7 @@ export const emailCampaigns = sqliteTable("email_campaigns", {
   status: text("status").notNull().default("draft"),
   targetType: text("target_type").notNull().default("all"),
   targetTagIds: text("target_tag_ids", { mode: "json" }).$type<string[] | null>(),
+  targetSurveyId: text("target_survey_id").references(() => surveys.id),
   targetCustomerIds: text("target_customer_ids", { mode: "json" }).$type<string[] | null>(),
   scheduledAt: text("scheduled_at"),
   sentAt: text("sent_at"),
