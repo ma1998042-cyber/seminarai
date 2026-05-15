@@ -138,6 +138,28 @@ export async function deleteStep(id: string) {
   return {}
 }
 
+export async function deleteSequenceAction(id: string): Promise<{ success?: boolean; error?: string }> {
+  const user = await getAuthUser()
+  if (!user) return { error: 'ログインが必要です' }
+  const orgId = await getOrgId(user.id)
+  if (!orgId) return { error: '組織が設定されていません' }
+
+  const db = getDbFromContext()
+
+  // 対象シーケンスが現在ユーザーの組織に属するか検証
+  const campaign = await db.query.stepCampaigns.findFirst({
+    where: and(eq(stepCampaigns.id, id), eq(stepCampaigns.organizationId, orgId)),
+  })
+  if (!campaign) return { error: 'ステップ配信が見つかりません' }
+
+  // 関連データを先に削除
+  await db.delete(stepCampaignEnrollments).where(eq(stepCampaignEnrollments.stepCampaignId, id))
+  await db.delete(stepCampaignSteps).where(eq(stepCampaignSteps.stepCampaignId, id))
+  await db.delete(stepCampaigns).where(eq(stepCampaigns.id, id))
+
+  return { success: true }
+}
+
 export async function enrollCustomers(sequenceId: string, customerIds: string[]) {
   const user = await getAuthUser()
   if (!user) return { error: 'ログインが必要です' }
