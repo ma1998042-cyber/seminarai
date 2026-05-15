@@ -5,6 +5,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/lib/db";
 import { userProfiles } from "@/lib/db/schema";
 import * as authSchema from "@/lib/db/auth-schema";
+import { sendEmail } from "@/lib/email";
 
 /**
  * Better Auth サーバーインスタンスを取得する。
@@ -25,6 +26,20 @@ export function getAuth() {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
+      sendResetPassword: async ({ user, url }) => {
+        await sendEmail(
+          user.email,
+          "パスワードリセットのご案内",
+          `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #1a1a1a;">パスワードリセット</h2>
+            <p style="color: #555;">以下のボタンをクリックして、新しいパスワードを設定してください。</p>
+            <a href="${url}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin: 16px 0;">パスワードをリセットする</a>
+            <p style="color: #999; font-size: 14px;">このリンクは1時間有効です。心当たりがない場合は、このメールを無視してください。</p>
+          </div>
+          `
+        );
+      },
     },
     session: {
       cookieCache: {
