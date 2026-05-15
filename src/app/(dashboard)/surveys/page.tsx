@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { eq, and, like, desc } from "drizzle-orm";
-import { Plus, ClipboardList, MessageSquare, ExternalLink, Search } from "lucide-react";
+import { Plus, ClipboardList, MessageSquare, ExternalLink, Search, Clock } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
@@ -86,6 +86,17 @@ export default async function SurveysPage({
                   <div className="flex items-center gap-4 text-xs text-gray-400">
                     <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{survey.responseCount}件の回答</span>
                     <span>{formatDate(survey.createdAt)}</span>
+                    {survey.deadline && (
+                      <span className={cn(
+                        "flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium",
+                        Math.floor(Date.now() / 1000) > survey.deadline
+                          ? "text-red-600 bg-red-50"
+                          : "text-gray-500 bg-gray-100"
+                      )}>
+                        <Clock className="w-3 h-3" />
+                        {Math.floor(Date.now() / 1000) > survey.deadline ? "期限切れ" : `〜${new Date(survey.deadline * 1000).toLocaleDateString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`}
+                      </span>
+                    )}
                   </div>
                 </div>
               </Link>

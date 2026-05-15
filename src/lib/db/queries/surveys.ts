@@ -60,6 +60,7 @@ export async function updateSurvey(
     responseCount: number;
     publishedAt: string | null;
     closedAt: string | null;
+    deadline: number | null;
   }>,
 ) {
   const [survey] = await db

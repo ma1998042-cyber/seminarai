@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, MessageSquare, ExternalLink, BarChart3 } from "lucide-react";
+import { ArrowLeft, MessageSquare, ExternalLink, BarChart3, Clock } from "lucide-react";
 import CopyUrlButton from "./CopyUrlButton";
 import { formatDateTime, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
@@ -200,6 +200,22 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
                   <span className="text-gray-700">{formatDateTime(survey.publishedAt)}</span>
                 </div>
               )}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">回答期限</span>
+                {survey.deadline ? (
+                  <span className={cn(
+                    "text-sm font-medium",
+                    Math.floor(Date.now() / 1000) > survey.deadline ? "text-red-600" : "text-gray-700"
+                  )}>
+                    {formatDateTime(new Date(survey.deadline * 1000))}
+                    {Math.floor(Date.now() / 1000) > survey.deadline && (
+                      <span className="ml-1 text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded">期限切れ</span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">なし</span>
+                )}
+              </div>
             </div>
           </div>
         </div>

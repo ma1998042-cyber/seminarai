@@ -19,8 +19,13 @@ export async function submitSurveyResponse(
     // アンケート情報を取得
     const survey = await db.query.surveys.findFirst({
       where: eq(surveys.id, surveyId),
-      columns: { category: true, eventId: true, organizationId: true },
+      columns: { category: true, eventId: true, organizationId: true, deadline: true },
     })
+
+    // 期限チェック
+    if (survey?.deadline && Math.floor(Date.now() / 1000) > survey.deadline) {
+      return { error: 'このアンケートの回答期限を過ぎています' }
+    }
 
     // respondentEmail があれば全カテゴリで顧客レコードを upsert
     let customerId: string | undefined

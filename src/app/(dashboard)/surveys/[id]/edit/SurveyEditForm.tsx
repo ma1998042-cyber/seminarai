@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Loader2, ClipboardList,
-  Type, AlignLeft, CheckSquare, Circle, ChevronDown, Star, Hash, CreditCard,
+  Type, AlignLeft, CheckSquare, Circle, ChevronDown, Star, Hash, CreditCard, Clock,
 } from "lucide-react";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { updateSurvey } from "./actions";
@@ -39,10 +39,22 @@ type InitialData = {
   thank_you_message: string;
   category: string;
   status: string;
+  deadline: number | null;
   payment_enabled: boolean;
   payment_amount: number;
   questions: Question[];
 };
+
+function unixToDatetimeLocal(ts: number): string {
+  const d = new Date(ts * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function datetimeLocalToUnix(val: string): number | null {
+  if (!val) return null;
+  return Math.floor(new Date(val).getTime() / 1000);
+}
 
 export default function SurveyEditForm({ surveyId, initial }: { surveyId: string; initial: InitialData }) {
   const router = useRouter();
@@ -54,6 +66,7 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
   const [category, setCategory] = useState(initial.category || "general");
   const [paymentEnabled, setPaymentEnabled] = useState(initial.payment_enabled);
   const [paymentAmount, setPaymentAmount] = useState(initial.payment_amount ? String(initial.payment_amount) : "");
+  const [deadline, setDeadline] = useState(initial.deadline ? unixToDatetimeLocal(initial.deadline) : "");
   const [questions, setQuestions] = useState<Question[]>(initial.questions);
   const [selectedType, setSelectedType] = useState<QuestionType>("text");
 
@@ -94,6 +107,7 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
       questions: questions.map((q, i) => ({ ...q, sort_order: i })),
       payment_enabled: paymentEnabled,
       payment_amount: paymentEnabled && paymentAmount ? parseInt(paymentAmount) : 0,
+      deadline: datetimeLocalToUnix(deadline),
     });
 
     setLoading(false);
@@ -140,6 +154,18 @@ export default function SurveyEditForm({ surveyId, initial }: { surveyId: string
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-gray-400 inline" />回答期限</span>
+          </label>
+          <input
+            type="datetime-local"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <p className="text-xs text-gray-400 mt-1">未設定の場合は期限なしになります</p>
         </div>
         <div className="border border-gray-100 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">

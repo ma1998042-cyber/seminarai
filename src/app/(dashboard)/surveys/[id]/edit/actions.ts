@@ -28,6 +28,7 @@ export async function updateSurvey(surveyId: string, data: {
   questions: Question[]
   payment_enabled?: boolean
   payment_amount?: number
+  deadline?: number | null
 }) {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -44,6 +45,7 @@ export async function updateSurvey(surveyId: string, data: {
       category: data.category || 'general',
       status: data.status,
       publishedAt: data.status === 'active' ? new Date().toISOString() : null,
+      deadline: data.deadline ?? null,
     })
 
     // 既存の設問を削除して再挿入
