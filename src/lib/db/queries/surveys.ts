@@ -123,6 +123,12 @@ export async function getSurveyResponses(db: Database, surveyId: string) {
   });
 }
 
+export async function getSurveyResponseById(db: Database, id: string) {
+  return db.query.surveyResponses.findFirst({
+    where: eq(surveyResponses.id, id),
+  });
+}
+
 export async function createSurveyResponse(
   db: Database,
   data: {
