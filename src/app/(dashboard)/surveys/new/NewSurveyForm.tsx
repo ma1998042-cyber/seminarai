@@ -138,11 +138,11 @@ export default function NewSurveyForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">回答後のメッセージ</label>
-          <input
-            type="text"
+          <textarea
             value={thankYouMessage}
             onChange={(e) => setThankYouMessage(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
         </div>
         {events.length > 0 && (
