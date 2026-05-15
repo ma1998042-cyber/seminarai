@@ -10,6 +10,7 @@ import { getEventById, getEventRegistrations } from "@/lib/db/queries/events";
 import { eq, and, or, isNull, ne } from "drizzle-orm";
 import { surveys as surveysTable } from "@/lib/db/schema";
 import LinkSurveyButton from "./LinkSurveyButton";
+import DeleteEventButton from "./DeleteEventButton";
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-600",
@@ -82,13 +83,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <p className="text-sm text-gray-500">{EVENT_TYPE_LABELS[event.eventType] || event.eventType}</p>
           </div>
         </div>
-        <Link
-          href={`/events/${event.id}/edit`}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          <Edit className="w-4 h-4" />
-          編集
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/events/${event.id}/edit`}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <Edit className="w-4 h-4" />
+            編集
+          </Link>
+          <DeleteEventButton eventId={event.id} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
