@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus, Crown, Settings, Edit, Eye, Users } from "lucide-react";
 import { formatDate, ROLE_LABELS, getInitials } from "@/lib/utils";
 import InviteMemberForm from "./InviteMemberForm";
+import CopyInviteLinkButton from "./CopyInviteLinkButton";
 
 export default async function MembersPage() {
   const auth = getAuth();
@@ -114,7 +115,10 @@ export default async function MembersPage() {
                     {formatDate(inv.expiresAt)}まで有効
                   </p>
                 </div>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">保留中</span>
+                <div className="flex items-center gap-2">
+                  <CopyInviteLinkButton token={inv.token} />
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">保留中</span>
+                </div>
               </div>
             ))}
           </div>

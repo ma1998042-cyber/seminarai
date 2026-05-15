@@ -5,6 +5,8 @@ import { getDbFromContext } from "@/lib/db";
 import { getUserProfile, updateUserProfile } from "@/lib/db/queries/users";
 import { getOrganizationById, updateOrganization } from "@/lib/db/queries/organizations";
 import { createInvitation } from "@/lib/db/queries/invitations";
+import { getOrganizationById as getOrgById2 } from "@/lib/db/queries/organizations";
+import { sendEmail } from "@/lib/email";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
@@ -108,13 +110,39 @@ export async function inviteMember(
   expiresAt.setDate(expiresAt.getDate() + 7);
 
   try {
-    await createInvitation(db, {
+    const invitation = await createInvitation(db, {
       organizationId: orgId,
       email: email.trim().toLowerCase(),
       role,
       invitedBy: user.id,
       expiresAt: expiresAt.toISOString(),
     });
+
+    // 招待メールを送信
+    const org = await getOrgById2(db, orgId);
+    const hdrs = await headers();
+    const host = hdrs.get("host") || "localhost:3000";
+    const protocol = host.startsWith("localhost") ? "http" : "https";
+    const inviteUrl = `${protocol}://${host}/invite/${invitation.token}`;
+
+    try {
+      await sendEmail(
+        email.trim().toLowerCase(),
+        `${org?.name || "組織"}への招待`,
+        `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+          <h2 style="color: #1a1a1a;">${org?.name || "組織"}に招待されました</h2>
+          <p style="color: #555;">以下のリンクをクリックして組織に参加してください。</p>
+          <a href="${inviteUrl}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin: 16px 0;">組織に参加する</a>
+          <p style="color: #999; font-size: 14px;">このリンクは7日間有効です。</p>
+        </div>
+        `
+      );
+    } catch (emailErr) {
+      console.error("招待メール送信に失敗:", emailErr);
+      // メール送信失敗でも招待レコードは維持
+    }
+
     revalidatePath("/settings/members");
     return { success: true };
   } catch (err: any) {
