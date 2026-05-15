@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, MessageSquare, ExternalLink, BarChart3, Clock } from "lucide-react";
 import CopyUrlButton from "./CopyUrlButton";
+import DeleteSurveyButton from "./DeleteSurveyButton";
 import { formatDateTime, cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
@@ -91,6 +92,7 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
           >
             編集
           </Link>
+          <DeleteSurveyButton surveyId={survey.id} />
         </div>
       </div>
 
