@@ -220,7 +220,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               アンケートを作成する
             </Link>
             <Link
-              href={`/customers?source_event=${event.id}`}
+              href={`/events/${event.id}/participants`}
               className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-600"
             >
               <Users className="w-4 h-4 text-gray-400" />
