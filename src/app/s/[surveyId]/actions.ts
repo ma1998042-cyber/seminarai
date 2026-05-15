@@ -1,6 +1,7 @@
 'use server'
 
 import { eq, sql } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
 import { getDbFromContext } from '@/lib/db'
 import { createSurveyResponse, incrementSurveyResponseCount } from '@/lib/db/queries/surveys'
 import { upsertCustomerByEmail } from '@/lib/db/queries/customers'
@@ -58,16 +59,19 @@ export async function submitSurveyResponse(
       respondentEmail &&
       customerId
     ) {
-      // event_registrations テーブルに upsert
+      const eventId = survey.eventId
+
+      // event_registrations テーブルで重複チェック
       const existingReg = await db.query.eventRegistrations.findFirst({
-        where: (r, { and, eq }) =>
-          and(eq(r.eventId, survey.eventId!), eq(r.email, respondentEmail)),
+        where: (r, { and, eq: colEq }) =>
+          and(colEq(r.eventId, eventId), colEq(r.email, respondentEmail)),
         columns: { id: true },
       })
 
       if (!existingReg) {
+        // 新規参加者登録
         await db.insert(eventRegistrations).values({
-          eventId: survey.eventId,
+          eventId,
           customerId,
           organizationId: survey.organizationId,
           email: respondentEmail,
@@ -79,10 +83,13 @@ export async function submitSurveyResponse(
         await db
           .update(events)
           .set({
-            registrationCount: sql`${events.registrationCount} + 1`,
+            registrationCount: sql`coalesce(${events.registrationCount}, 0) + 1`,
             updatedAt: new Date().toISOString(),
           })
-          .where(eq(events.id, survey.eventId))
+          .where(eq(events.id, eventId))
+
+        revalidatePath('/events')
+        revalidatePath(`/events/${eventId}`)
       }
     }
 

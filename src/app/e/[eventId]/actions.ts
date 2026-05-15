@@ -3,6 +3,7 @@
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvent, upsertEventRegistration } from "@/lib/db/queries/events";
 import { eq, and, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { customers, events, eventRegistrations } from "@/lib/db/schema";
 
 export async function registerForEventAction(
@@ -68,10 +69,13 @@ export async function registerForEventAction(
     await db
       .update(events)
       .set({
-        registrationCount: sql`${events.registrationCount} + 1`,
+        registrationCount: sql`coalesce(${events.registrationCount}, 0) + 1`,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(events.id, eventId));
+
+    revalidatePath('/events');
+    revalidatePath(`/events/${eventId}`);
 
     return {};
   } catch {
