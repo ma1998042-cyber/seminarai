@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { eq, and, like, desc } from "drizzle-orm";
+import { eq, and, like, desc, count } from "drizzle-orm";
 import { Plus, ClipboardList, MessageSquare, ExternalLink, Search, Clock } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
@@ -10,13 +10,17 @@ import { getUserProfile } from "@/lib/db/queries/users";
 import { getEvents } from "@/lib/db/queries/events";
 import { surveys as surveysTable } from "@/lib/db/schema";
 import SurveySearch from "./SurveySearch";
+import Pagination from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default async function SurveysPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; event?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; event?: string; status?: string; page?: string }>;
 }) {
-  const { q, event, status } = await searchParams;
+  const { q, event, status, page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
 
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
@@ -33,10 +37,18 @@ export default async function SurveysPage({
   if (event) conditions.push(eq(surveysTable.eventId, event));
   if (status) conditions.push(eq(surveysTable.status, status));
 
-  const surveys = await db.query.surveys.findMany({
-    where: and(...conditions),
-    orderBy: (s, { desc: d }) => [d(s.createdAt)],
-  });
+  const [surveys, countResult] = await Promise.all([
+    db.query.surveys.findMany({
+      where: and(...conditions),
+      orderBy: (s, { desc: d }) => [d(s.createdAt)],
+      limit: PAGE_SIZE,
+      offset: (currentPage - 1) * PAGE_SIZE,
+    }),
+    db.select({ value: count() }).from(surveysTable).where(and(...conditions)),
+  ]);
+
+  const totalCount = countResult[0]?.value ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const eventsList = await getEvents(db, orgId);
 
@@ -128,6 +140,8 @@ export default async function SurveysPage({
           )}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalPages={totalPages} />
     </div>
   );
 }
