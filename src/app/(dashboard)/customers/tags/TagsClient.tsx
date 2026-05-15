@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Tag, Trash2, Loader2 } from "lucide-react";
-import { createTag, deleteTag } from "../actions";
+import { Plus, Tag, Trash2, Loader2, Pencil, Check, X } from "lucide-react";
+import { createTag, deleteTag, updateTagAction } from "../actions";
 import { useRouter } from "next/navigation";
 
 const PRESET_COLORS = [
@@ -25,6 +25,9 @@ export default function TagsClient({ initialTags }: { initialTags: TagItem[] }) 
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState(PRESET_COLORS[0]);
   const [error, setError] = useState("");
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingColor, setEditingColor] = useState("");
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +38,27 @@ export default function TagsClient({ initialTags }: { initialTags: TagItem[] }) 
     setNewTagName("");
     router.refresh();
     startTransition(() => { });
+  };
+
+  const startEditing = (tag: TagItem) => {
+    setEditingTagId(tag.id);
+    setEditingName(tag.name);
+    setEditingColor(tag.color);
+  };
+
+  const cancelEditing = () => {
+    setEditingTagId(null);
+    setEditingName("");
+    setEditingColor("");
+  };
+
+  const handleUpdate = async () => {
+    if (!editingTagId || !editingName.trim()) return;
+    setError("");
+    const result = await updateTagAction(editingTagId, { name: editingName.trim(), color: editingColor });
+    if (result.error) { setError(result.error); return; }
+    setTags((prev) => prev.map((t) => t.id === editingTagId ? { ...t, name: editingName.trim(), color: editingColor } : t));
+    cancelEditing();
   };
 
   const handleDelete = async (tagId: string) => {
@@ -111,19 +135,76 @@ export default function TagsClient({ initialTags }: { initialTags: TagItem[] }) 
           <div className="space-y-2">
             {tags.map((tag) => (
               <div key={tag.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
-                  <span className="text-sm font-medium text-gray-700">{tag.name}</span>
-                  {tag.is_auto && (
-                    <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">自動</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleDelete(tag.id)}
-                  className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {editingTagId === tag.id ? (
+                  <>
+                    <div className="flex items-center gap-3 flex-1 mr-3">
+                      <div className="flex items-center gap-1.5">
+                        {PRESET_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setEditingColor(color)}
+                            className={`w-5 h-5 rounded-full transition-all ${editingColor === color ? "ring-2 ring-offset-1 ring-gray-400 scale-110" : ""}`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                        <input
+                          type="color"
+                          value={editingColor}
+                          onChange={(e) => setEditingColor(e.target.value)}
+                          className="w-5 h-5 rounded-full border border-gray-200 cursor-pointer"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleUpdate(); if (e.key === "Escape") cancelEditing(); }}
+                        className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={handleUpdate}
+                        disabled={!editingName.trim()}
+                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                      <span className="text-sm font-medium text-gray-700">{tag.name}</span>
+                      {tag.is_auto && (
+                        <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">自動</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => startEditing(tag)}
+                        className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tag.id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

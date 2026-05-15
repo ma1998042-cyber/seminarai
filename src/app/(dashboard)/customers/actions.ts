@@ -10,7 +10,7 @@ import {
   addCustomerTag,
   removeCustomerTag,
 } from '@/lib/db/queries/customers'
-import { createTag as dbCreateTag, deleteTag as dbDeleteTag } from '@/lib/db/queries/tags'
+import { createTag as dbCreateTag, updateTag as dbUpdateTag, deleteTag as dbDeleteTag } from '@/lib/db/queries/tags'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 
@@ -151,6 +151,24 @@ export async function createTag(name: string, color: string): Promise<{ error?: 
     const db = getDbFromContext()
     await dbCreateTag(db, { organizationId: orgId, name: name.trim(), color })
     revalidatePath('/customers/tags')
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+export async function updateTagAction(
+  tagId: string,
+  data: { name: string; color: string }
+): Promise<{ error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { error: '組織が見つかりません' }
+
+  try {
+    const db = getDbFromContext()
+    await dbUpdateTag(db, orgId, tagId, { name: data.name.trim(), color: data.color })
+    revalidatePath('/customers/tags')
+    revalidatePath('/customers')
     return {}
   } catch (e: any) {
     return { error: e.message }
