@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, Building2, CalendarDays, CheckCircle, Loader2, ArrowRight } from "lucide-react";
+import { Zap, Building2, CalendarDays, CheckCircle, Loader2, ArrowRight, Users, Mail } from "lucide-react";
 import { createOrganization, createEvent, completeOnboarding } from "./actions";
 
 const steps = [
@@ -19,6 +19,7 @@ export default function OnboardingPage() {
   const [orgId, setOrgId] = useState("");
 
   // Step 1: Organization
+  const [orgMode, setOrgMode] = useState<"create" | "join" | null>(null);
   const [orgName, setOrgName] = useState("");
   const [orgType, setOrgType] = useState("seminar");
 
@@ -118,7 +119,7 @@ export default function OnboardingPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           {/* Step 1: Organization */}
           {currentStep === 1 && (
-            <form onSubmit={handleCreateOrg} className="space-y-6">
+            <div className="space-y-6">
               <div className="text-center mb-6">
                 <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Building2 className="w-7 h-7 text-indigo-600" />
@@ -127,57 +128,117 @@ export default function OnboardingPage() {
                 <p className="text-sm text-gray-500 mt-1">{steps[0].desc}</p>
               </div>
 
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                  {error}
-                </div>
+              {/* Mode selection */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setOrgMode("create")}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    orgMode === "create"
+                      ? "border-indigo-500 bg-indigo-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <Building2 className={`w-6 h-6 mb-2 ${orgMode === "create" ? "text-indigo-600" : "text-gray-400"}`} />
+                  <div className={`text-sm font-semibold ${orgMode === "create" ? "text-indigo-700" : "text-gray-700"}`}>
+                    新しい組織を作成する
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrgMode("join")}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${
+                    orgMode === "join"
+                      ? "border-indigo-500 bg-indigo-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <Users className={`w-6 h-6 mb-2 ${orgMode === "join" ? "text-indigo-600" : "text-gray-400"}`} />
+                  <div className={`text-sm font-semibold ${orgMode === "join" ? "text-indigo-700" : "text-gray-700"}`}>
+                    既存の組織に参加する
+                  </div>
+                </button>
+              </div>
+
+              {/* Create organization form */}
+              {orgMode === "create" && (
+                <form onSubmit={handleCreateOrg} className="space-y-6">
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      組織名・ビジネス名 <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="例：山田太郎コンサルティング"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ビジネスタイプ
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {orgTypes.map((type) => (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => setOrgType(type.value)}
+                          className={`p-3 rounded-lg border text-sm font-medium transition-all text-left ${
+                            orgType === type.value
+                              ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                              : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          }`}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || !orgName.trim()}
+                    className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                    次へ進む
+                  </button>
+                </form>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  組織名・ビジネス名 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                  placeholder="例：山田太郎コンサルティング"
-                />
-              </div>
+              {/* Join existing organization */}
+              {orgMode === "join" && (
+                <div className="space-y-6">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div className="flex gap-3">
+                      <Mail className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-sm text-amber-800 leading-relaxed">
+                        組織の管理者から招待メールを送ってもらってください。メール内のリンクをクリックすると組織に参加できます。
+                      </p>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ビジネスタイプ
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {orgTypes.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setOrgType(type.value)}
-                      className={`p-3 rounded-lg border text-sm font-medium transition-all text-left ${
-                        orgType === type.value
-                          ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                          : "border-gray-200 text-gray-600 hover:border-gray-300"
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard")}
+                    className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    ダッシュボードへ進む
+                  </button>
                 </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || !orgName.trim()}
-                className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                次へ進む
-              </button>
-            </form>
+              )}
+            </div>
           )}
 
           {/* Step 2: Event */}
