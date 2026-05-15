@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import DOMPurify from "dompurify";
 import {
   ArrowLeft,
   Loader2,
@@ -77,6 +78,8 @@ export default function CampaignDetailPage() {
   >([]);
   const [sentRecipientsTotal, setSentRecipientsTotal] = useState(0);
 
+  const [fetchError, setFetchError] = useState(false);
+
   const [form, setForm] = useState({
     title: "",
     subject: "",
@@ -91,8 +94,10 @@ export default function CampaignDetailPage() {
   const isEditable = campaign?.status === "draft" || campaign?.status === "scheduled";
   const isReadOnly = campaign?.status === "sent" || campaign?.status === "canceled";
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setFetchError(false);
       const [campaignData, tagsData, surveysData] = await Promise.all([
         getCampaignDetail(id),
         getTagsForOrg(),
@@ -117,8 +122,14 @@ export default function CampaignDetailPage() {
         target_survey_id: campaignData.targetSurveyId ?? "",
         scheduled_at: campaignData.scheduledAt ?? "",
       });
+    } catch {
+      setFetchError(true);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [id, router]);
 
@@ -234,6 +245,21 @@ export default function CampaignDetailPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <AlertTriangle className="w-10 h-10 text-red-400" />
+        <p className="text-sm text-gray-600">データの読み込みに失敗しました。再読み込みしてください。</p>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          再読み込み
+        </button>
       </div>
     );
   }
@@ -434,7 +460,7 @@ export default function CampaignDetailPage() {
             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <div
                 className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: campaign.bodyHtml }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(campaign.bodyHtml) }}
               />
             </div>
           )}

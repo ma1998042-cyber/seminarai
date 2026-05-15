@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Loader2, Play, Pause, Mail, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Loader2, Play, Pause, Mail, Clock, AlertTriangle } from "lucide-react";
 import { saveStep, deleteStep, updateSequenceStatus, getSequenceData } from "../actions";
 
 type Step = {
@@ -42,15 +42,23 @@ export default function SequenceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fetchError, setFetchError] = useState(false);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const [addingStep, setAddingStep] = useState(false);
   const [newStep, setNewStep] = useState({ ...emptyStep });
 
   const fetchData = async () => {
-    const data = await getSequenceData(id);
-    setSequence(data.sequence);
-    setSteps(data.steps);
-    setLoading(false);
+    try {
+      setLoading(true);
+      setFetchError(false);
+      const data = await getSequenceData(id);
+      setSequence(data.sequence);
+      setSteps(data.steps);
+    } catch {
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -87,6 +95,20 @@ export default function SequenceDetailPage() {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <AlertTriangle className="w-10 h-10 text-red-400" />
+        <p className="text-sm text-gray-600">データの読み込みに失敗しました。再読み込みしてください。</p>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          再読み込み
+        </button>
+      </div>
+    );
+  }
   if (!sequence) return <div className="text-center py-20 text-gray-400">シーケンスが見つかりません</div>;
 
   return (
