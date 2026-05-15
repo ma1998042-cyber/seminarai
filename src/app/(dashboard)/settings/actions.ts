@@ -2,6 +2,9 @@
 
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
+import { eq, and } from "drizzle-orm";
+import { user as userTable } from "@/lib/db/auth-schema";
+import { organizationMembers } from "@/lib/db/schema";
 import { getUserProfile, updateUserProfile } from "@/lib/db/queries/users";
 import { getOrganizationById, updateOrganization } from "@/lib/db/queries/organizations";
 import { createInvitation, deleteInvitation } from "@/lib/db/queries/invitations";
@@ -106,6 +109,16 @@ export async function inviteMember(
   if (!user) return { error: "ログインが必要です" };
 
   const db = getDbFromContext();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // 既存ユーザーが既にこの組織のメンバーかチェック
+  const existingUser = await db.select({ id: userTable.id }).from(userTable).where(eq(userTable.email, normalizedEmail)).get();
+  if (existingUser) {
+    const existingMember = await db.select({ id: organizationMembers.id }).from(organizationMembers).where(and(eq(organizationMembers.organizationId, orgId), eq(organizationMembers.userId, existingUser.id))).get();
+    if (existingMember) {
+      return { error: "このメールアドレスのユーザーは既に組織のメンバーです" };
+    }
+  }
 
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
@@ -113,7 +126,7 @@ export async function inviteMember(
   try {
     const invitation = await createInvitation(db, {
       organizationId: orgId,
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       role,
       invitedBy: user.id,
       expiresAt: expiresAt.toISOString(),
@@ -128,7 +141,7 @@ export async function inviteMember(
 
     try {
       await sendEmail(
-        email.trim().toLowerCase(),
+        normalizedEmail,
         `${org?.name || "組織"}への招待`,
         `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
