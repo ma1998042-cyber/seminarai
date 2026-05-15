@@ -72,12 +72,21 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
             )}
           </div>
         </div>
-        <Link
-          href={`/surveys/${survey.id}/edit`}
-          className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-        >
-          編集
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/surveys/${survey.id}/analytics`}
+            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
+          >
+            <BarChart3 className="w-4 h-4" />
+            分析
+          </Link>
+          <Link
+            href={`/surveys/${survey.id}/edit`}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            編集
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
