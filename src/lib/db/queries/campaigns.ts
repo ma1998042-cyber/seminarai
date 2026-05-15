@@ -1,12 +1,44 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, count } from "drizzle-orm";
 import { emailCampaigns } from "../schema";
 import type { Database } from "..";
 
-export async function getCampaigns(db: Database, orgId: string) {
+export async function getCampaigns(
+  db: Database,
+  orgId: string,
+  options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  const conditions = [eq(emailCampaigns.organizationId, orgId)];
+  if (options?.status) {
+    conditions.push(eq(emailCampaigns.status, options.status));
+  }
+
   return db.query.emailCampaigns.findMany({
-    where: eq(emailCampaigns.organizationId, orgId),
+    where: and(...conditions),
     orderBy: (c, { desc }) => [desc(c.createdAt)],
+    limit: options?.limit,
+    offset: options?.offset,
   });
+}
+
+export async function countCampaigns(
+  db: Database,
+  orgId: string,
+  options?: { status?: string },
+) {
+  const conditions = [eq(emailCampaigns.organizationId, orgId)];
+  if (options?.status) {
+    conditions.push(eq(emailCampaigns.status, options.status));
+  }
+
+  const [result] = await db
+    .select({ count: count() })
+    .from(emailCampaigns)
+    .where(and(...conditions));
+  return result?.count ?? 0;
 }
 
 export async function getCampaignById(db: Database, orgId: string, id: string) {

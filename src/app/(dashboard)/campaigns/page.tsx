@@ -4,17 +4,21 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import CampaignNav from "@/components/campaigns/CampaignNav";
 import CampaignList from "@/components/campaigns/CampaignList";
+import Pagination from "@/components/Pagination";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
-import { getCampaigns } from "@/lib/db/queries/campaigns";
+import { getCampaigns, countCampaigns } from "@/lib/db/queries/campaigns";
+
+const PAGE_SIZE = 20;
 
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
 
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
@@ -26,10 +30,17 @@ export default async function CampaignsPage({
   const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const allCampaigns = await getCampaigns(db, orgId);
-  const campaigns = status
-    ? allCampaigns.filter((c) => c.status === status)
-    : allCampaigns;
+  const filterOptions = { status };
+  const [campaigns, totalCount] = await Promise.all([
+    getCampaigns(db, orgId, {
+      ...filterOptions,
+      limit: PAGE_SIZE,
+      offset: (currentPage - 1) * PAGE_SIZE,
+    }),
+    countCampaigns(db, orgId, filterOptions),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -50,6 +61,8 @@ export default async function CampaignsPage({
       <CampaignNav />
 
       <CampaignList campaigns={campaigns} currentStatus={status} />
+
+      <Pagination currentPage={currentPage} totalPages={totalPages} />
     </div>
   );
 }
