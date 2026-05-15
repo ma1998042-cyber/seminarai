@@ -12,6 +12,7 @@ export async function getCustomers(
   options?: {
     search?: string;
     status?: string;
+    tagId?: string;
     limit?: number;
     offset?: number;
     withTags?: boolean;
@@ -34,6 +35,15 @@ export async function getCustomers(
     );
   }
 
+  // tagId フィルタ: 該当タグを持つ顧客IDをサブクエリで取得
+  if (options?.tagId) {
+    const customerIdsWithTag = db
+      .select({ customerId: customerTags.customerId })
+      .from(customerTags)
+      .where(eq(customerTags.tagId, options.tagId));
+    conditions.push(sql`${customers.id} IN (${customerIdsWithTag})`);
+  }
+
   return db.query.customers.findMany({
     where: and(...conditions),
     limit: options?.limit ?? 50,
@@ -47,6 +57,48 @@ export async function getCustomers(
       },
     }),
   });
+}
+
+export async function countCustomers(
+  db: Database,
+  orgId: string,
+  options?: {
+    search?: string;
+    status?: string;
+    tagId?: string;
+  },
+) {
+  const conditions = [eq(customers.organizationId, orgId)];
+
+  if (options?.status) {
+    conditions.push(eq(customers.status, options.status));
+  }
+
+  if (options?.search) {
+    const pattern = `%${options.search}%`;
+    conditions.push(
+      or(
+        like(customers.email, pattern),
+        like(customers.fullName, pattern),
+        like(customers.company, pattern),
+      )!,
+    );
+  }
+
+  if (options?.tagId) {
+    const customerIdsWithTag = db
+      .select({ customerId: customerTags.customerId })
+      .from(customerTags)
+      .where(eq(customerTags.tagId, options.tagId));
+    conditions.push(sql`${customers.id} IN (${customerIdsWithTag})`);
+  }
+
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(customers)
+    .where(and(...conditions));
+
+  return result?.count ?? 0;
 }
 
 export async function getCustomerById(db: Database, orgId: string, id: string) {

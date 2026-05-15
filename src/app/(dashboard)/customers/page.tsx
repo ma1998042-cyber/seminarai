@@ -1,7 +1,7 @@
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
-import { getCustomers, getCustomerSurveyResponseCounts } from "@/lib/db/queries/customers";
+import { getCustomers, getCustomerSurveyResponseCounts, countCustomers } from "@/lib/db/queries/customers";
 import { getTags } from "@/lib/db/queries/tags";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -9,13 +9,17 @@ import Link from "next/link";
 import { Plus, Users, Tag, Upload, ClipboardList } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import CustomerSearch from "./CustomerSearch";
+import Pagination from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tag?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string; status?: string; page?: string }>;
 }) {
-  const { q, tag, status } = await searchParams;
+  const { q, tag, status, page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
 
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
@@ -30,26 +34,23 @@ export default async function CustomersPage({
   // Tags for filter
   const allTags = await getTags(db, orgId);
 
-  // Build customer query
-  const customerList = await getCustomers(db, orgId, {
-    search: q,
-    status,
-    limit: 100,
-    withTags: true,
-  });
+  // Build customer query with DB-side tag filter
+  const filterOptions = { search: q, status, tagId: tag };
+  const [customerList, totalCount] = await Promise.all([
+    getCustomers(db, orgId, {
+      ...filterOptions,
+      limit: PAGE_SIZE,
+      offset: (currentPage - 1) * PAGE_SIZE,
+      withTags: true,
+    }),
+    countCustomers(db, orgId, filterOptions),
+  ]);
 
-  const count = customerList.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   // アンケート回答数を取得
   const emails = customerList.map((c: any) => c.email).filter(Boolean);
   const surveyCountMap = await getCustomerSurveyResponseCounts(db, orgId, emails);
-
-  // Filter by tag client-side
-  const filtered = tag
-    ? customerList.filter((c: any) =>
-        c.customerTags?.some((ct: any) => ct.tag?.id === tag)
-      )
-    : customerList;
 
   const statusColors: Record<string, string> = {
     active: "bg-green-100 text-green-700",
@@ -69,7 +70,7 @@ export default async function CustomersPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">顧客管理</h1>
-          <p className="text-sm text-gray-500 mt-1">{count ?? 0}名の顧客</p>
+          <p className="text-sm text-gray-500 mt-1">{totalCount ?? 0}名の顧客</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -98,7 +99,7 @@ export default async function CustomersPage({
 
       <CustomerSearch tags={allTags ?? []} currentQ={q} currentTag={tag} currentStatus={status} />
 
-      {filtered.length > 0 ? (
+      {customerList.length > 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <table className="w-full">
             <thead>
@@ -112,7 +113,7 @@ export default async function CustomersPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((customer: any) => {
+              {customerList.map((customer: any) => {
                 const customerTags = (customer.customerTags as any[])
                   ?.map((ct: any) => ct.tag)
                   .filter(Boolean) ?? [];
@@ -208,6 +209,8 @@ export default async function CustomersPage({
           )}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalPages={totalPages} />
     </div>
   );
 }
