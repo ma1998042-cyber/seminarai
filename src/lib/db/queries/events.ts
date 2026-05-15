@@ -70,6 +70,7 @@ export async function updateEvent(
     tags: string[];
     customFields: unknown[];
     settings: Record<string, unknown>;
+    showRemainingCapacity: number;
   }>,
 ) {
   const [event] = await db

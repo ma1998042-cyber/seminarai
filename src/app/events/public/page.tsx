@@ -79,16 +79,15 @@ export default async function PublicEventsPage() {
                         </div>
                       )}
 
-                      {/* 定員 */}
-                      {event.capacity != null && (
+                      {/* 残席 */}
+                      {event.showRemainingCapacity === 1 && event.capacity != null && (
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span>
-                            {event.registrationCount}/{event.capacity}名
-                            {isFull && (
-                              <span className="ml-2 text-red-600 font-medium">満席</span>
-                            )}
-                          </span>
+                          {isFull ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">満席</span>
+                          ) : (
+                            <span>あと{event.capacity - event.registrationCount}名</span>
+                          )}
                         </div>
                       )}
                     </div>
