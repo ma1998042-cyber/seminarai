@@ -28,6 +28,8 @@ export async function updateEventAction(eventId: string, form: {
   registration_deadline: string
   reminder_enabled: boolean
   reminder_days: number[]
+  reminder_subject: string
+  reminder_body: string
 }): Promise<{ error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -61,6 +63,8 @@ export async function updateEventAction(eventId: string, form: {
     registrationDeadline: form.registration_deadline || null,
     reminderEnabled: form.reminder_enabled ? 1 : 0,
     reminderDays: JSON.stringify(form.reminder_days),
+    reminderSubject: form.reminder_subject || null,
+    reminderBody: form.reminder_body || null,
   })
 
   if (!event) return { error: 'イベントの更新に失敗しました' }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Save, ImagePlus, X, AlertTriangle, Bell } from "lucide-react";
@@ -36,6 +36,8 @@ type EventData = {
   registrationDeadline: string | null;
   reminderEnabled: number;
   reminderDays: string;
+  reminderSubject: string | null;
+  reminderBody: string | null;
 };
 
 type SurveyItem = {
@@ -82,9 +84,30 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
         return [1, 3];
       }
     })(),
+    reminder_subject: event.reminderSubject || "",
+    reminder_body: event.reminderBody || "",
   });
 
   const [reminderDayInput, setReminderDayInput] = useState("");
+  const reminderBodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertPlaceholder = useCallback((placeholder: string) => {
+    const textarea = reminderBodyRef.current;
+    if (!textarea) {
+      setForm((prev) => ({ ...prev, reminder_body: prev.reminder_body + placeholder }));
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const current = form.reminder_body;
+    const newValue = current.substring(0, start) + placeholder + current.substring(end);
+    setForm((prev) => ({ ...prev, reminder_body: newValue }));
+    // カーソル位置を挿入後に移動
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + placeholder.length;
+    }, 0);
+  }, [form.reminder_body]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,6 +154,8 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
       registration_deadline: form.registration_deadline,
       reminder_enabled: form.reminder_enabled,
       reminder_days: form.reminder_days,
+      reminder_subject: form.reminder_subject,
+      reminder_body: form.reminder_body,
     });
 
     if (result.error) {
@@ -519,6 +544,48 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
                 </div>
                 <p className="mt-1 text-xs text-gray-400">1〜90日前まで設定できます</p>
               </div>
+
+              {/* メールテンプレート編集 */}
+              <div className="border-t border-gray-100 pt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">メール件名</label>
+                <input
+                  type="text"
+                  value={form.reminder_subject}
+                  onChange={(e) => setForm({ ...form, reminder_subject: e.target.value })}
+                  placeholder="【リマインド】{{イベント名}} 開催まであと{{残り日数}}日"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">メール本文</label>
+                <textarea
+                  ref={reminderBodyRef}
+                  value={form.reminder_body}
+                  onChange={(e) => setForm({ ...form, reminder_body: e.target.value })}
+                  rows={6}
+                  placeholder={"{{参加者名}} 様\n\nご登録いただいた「{{イベント名}}」の開催まであと{{残り日数}}日となりました。\n\n日時: {{開催日時}}\n場所: {{場所}}\n\nご参加をお待ちしております。"}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1.5">利用可能なプレースホルダ（クリックで挿入）</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {["{{参加者名}}", "{{イベント名}}", "{{開催日時}}", "{{場所}}", "{{残り日数}}"].map((ph) => (
+                    <button
+                      key={ph}
+                      type="button"
+                      onClick={() => insertPlaceholder(ph)}
+                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-indigo-50 hover:text-indigo-700 text-gray-600 rounded border border-gray-200 hover:border-indigo-200 transition-colors"
+                    >
+                      {ph}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400">未入力の場合はデフォルトテンプレートが使用されます</p>
             </div>
           )}
         </div>

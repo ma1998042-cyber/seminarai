@@ -61,6 +61,8 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
         registrationDeadline: event.registrationDeadline,
         reminderEnabled: event.reminderEnabled,
         reminderDays: event.reminderDays,
+        reminderSubject: event.reminderSubject,
+        reminderBody: event.reminderBody,
       }}
     />
   );
