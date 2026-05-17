@@ -6,7 +6,7 @@ import { getDbFromContext } from '@/lib/db'
 import { getUserProfile } from '@/lib/db/queries/users'
 import { createCampaign } from '@/lib/db/queries/campaigns'
 import { getTags } from '@/lib/db/queries/tags'
-import { getCustomers } from '@/lib/db/queries/customers'
+import { getCustomers, countCustomers } from '@/lib/db/queries/customers'
 import { customerTags, customers, emailTemplates, surveyResponses, surveys } from '@/lib/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -295,6 +295,47 @@ export async function getCustomersByTarget(
       fullName: c.fullName,
       email: c.email,
       tags: (c.customerTags ?? []).map((ct: any) => ({ name: ct.tag.name, color: ct.tag.color })),
+    })),
+    total,
+  }
+}
+
+export async function getAllCustomersForSelection(
+  options?: { search?: string; tagId?: string }
+): Promise<{
+  customers: { id: string; fullName: string | null; email: string; company: string | null; tags: { id: string; name: string; color: string }[] }[]
+  total: number
+}> {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
+  if (!user) return { customers: [], total: 0 }
+
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  if (!profile?.currentOrganizationId) return { customers: [], total: 0 }
+
+  const orgId = profile.currentOrganizationId
+
+  const results = await getCustomers(db, orgId, {
+    search: options?.search || undefined,
+    tagId: options?.tagId || undefined,
+    limit: 200,
+    withTags: true,
+  })
+
+  const total = await countCustomers(db, orgId, {
+    search: options?.search || undefined,
+    tagId: options?.tagId || undefined,
+  })
+
+  return {
+    customers: results.map((c: any) => ({
+      id: c.id,
+      fullName: c.fullName,
+      email: c.email,
+      company: c.company,
+      tags: (c.customerTags ?? []).map((ct: any) => ({ id: ct.tag.id, name: ct.tag.name, color: ct.tag.color })),
     })),
     total,
   }

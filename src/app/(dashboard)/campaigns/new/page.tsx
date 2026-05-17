@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList, FileText, UserChec
 import { VariableInsertButton } from "@/components/campaigns/VariableInsertButton";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getTagsForOrg, getSurveysForOrg, createCampaignAction, sendNowAction, getCustomersByTarget, getTemplatesForOrg } from "./actions";
+import CustomerSelector from "./CustomerSelector";
 
 export default function NewCampaignPage() {
   const router = useRouter();
@@ -435,6 +436,13 @@ export default function NewCampaignPage() {
                 ))}
               </select>
             </div>
+          )}
+
+          {form.target_type === "specific_customers" && (
+            <CustomerSelector
+              selectedIds={form.target_customer_ids}
+              onChange={(ids) => setForm({ ...form, target_customer_ids: ids })}
+            />
           )}
 
           {/* 顧客プレビュー */}
