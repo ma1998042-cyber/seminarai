@@ -18,6 +18,8 @@ export default function NewCampaignPage() {
   const [templates, setTemplates] = useState<{ id: string; name: string; subject: string; previewText: string | null; bodyHtml: string }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
+
   const [previewCustomers, setPreviewCustomers] = useState<
     { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
   >([]);
@@ -111,6 +113,32 @@ export default function NewCampaignPage() {
     setError("");
 
     const result = await createCampaignAction({ ...form, status });
+
+    if (result.error) {
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+
+    if (result.campaignId) {
+      router.push(`/campaigns/${result.campaignId}`);
+    }
+  };
+
+  const handleSendNow = async () => {
+    if (!form.title || !form.subject || !form.body_html) {
+      setError("タイトル・件名・本文は必須です");
+      return;
+    }
+    setShowSendConfirm(true);
+  };
+
+  const confirmSendNow = async () => {
+    setShowSendConfirm(false);
+    setLoading(true);
+    setError("");
+
+    const result = await sendNowAction(form);
 
     if (result.error) {
       setError(result.error);
@@ -416,16 +444,56 @@ export default function NewCampaignPage() {
         >
           下書き保存
         </button>
-        <button
-          onClick={() => handleSubmit("scheduled")}
-          disabled={loading}
-          className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          <Mail className="w-4 h-4" />
-          {form.scheduled_at ? "予約する" : "今すぐ配信"}
-        </button>
+        {form.scheduled_at ? (
+          <button
+            onClick={() => handleSubmit("scheduled")}
+            disabled={loading}
+            className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <Mail className="w-4 h-4" />
+            予約する
+          </button>
+        ) : (
+          <button
+            onClick={handleSendNow}
+            disabled={loading}
+            className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <Mail className="w-4 h-4" />
+            今すぐ送信
+          </button>
+        )}
       </div>
+
+      {/* 送信確認モーダル */}
+      {showSendConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">送信確認</h3>
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold text-indigo-600">{previewTotal}人</span>に今すぐメールを送信しますか？
+            </p>
+            <p className="text-xs text-gray-400">この操作は取り消せません。</p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowSendConfirm(false)}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={confirmSendNow}
+                className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                送信する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

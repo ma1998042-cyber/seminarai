@@ -10,6 +10,7 @@ import { getCustomers } from '@/lib/db/queries/customers'
 import { customerTags, customers, emailTemplates, surveyResponses, surveys } from '@/lib/db/schema'
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { sendCampaignEmails } from '@/lib/email/send-campaign'
 
 export async function getTagsForOrg(): Promise<{ id: string; name: string; color: string }[]> {
   const auth = getAuth()
@@ -60,6 +61,57 @@ export async function createCampaignAction(form: {
   })
 
   if (!campaign) return { error: 'メルマガの作成に失敗しました' }
+
+  revalidatePath('/campaigns')
+  return { campaignId: campaign.id }
+}
+
+export async function sendNowAction(form: {
+  title: string
+  subject: string
+  preview_text: string
+  body_html: string
+  target_type: string
+  target_tag_ids: string[]
+  target_survey_id: string
+}): Promise<{ campaignId?: string; error?: string }> {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
+  if (!user) return { error: 'ログインが必要です' }
+
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  if (!profile?.currentOrganizationId) return { error: '組織が見つかりません' }
+
+  // status='sending' で作成
+  const campaign = await createCampaign(db, {
+    organizationId: profile.currentOrganizationId,
+    title: form.title,
+    subject: form.subject,
+    previewText: form.preview_text || undefined,
+    bodyHtml: form.body_html,
+    targetType: form.target_type,
+    targetTagIds: form.target_tag_ids.length > 0 ? form.target_tag_ids : null,
+    targetSurveyId: form.target_survey_id || null,
+    status: 'sending',
+    createdBy: user.id,
+  })
+
+  if (!campaign) return { error: 'メルマガの作成に失敗しました' }
+
+  // 即時送信を実行
+  const headersList = await headers()
+  const host = headersList.get('host') || 'localhost:3000'
+  const protocol = headersList.get('x-forwarded-proto') || 'https'
+  const baseUrl = `${protocol}://${host}`
+
+  try {
+    await sendCampaignEmails(db, campaign.id, baseUrl)
+  } catch (err) {
+    console.error('即時送信エラー:', err)
+    // 送信に失敗してもキャンペーン自体は作成済み
+  }
 
   revalidatePath('/campaigns')
   return { campaignId: campaign.id }
