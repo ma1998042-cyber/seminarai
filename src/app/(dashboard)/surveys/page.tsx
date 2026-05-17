@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { eq, and, like, desc, count } from "drizzle-orm";
 import { Plus, ClipboardList, MessageSquare, ExternalLink, Search, Clock } from "lucide-react";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDate, cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
@@ -61,6 +61,12 @@ export default async function SurveysPage({
   const statusLabels: Record<string, string> = {
     draft: "下書き", active: "公開中", closed: "終了", archived: "アーカイブ",
   };
+  const categoryColors: Record<string, string> = {
+    pre_event: "bg-blue-100 text-blue-700",
+    post_event: "bg-green-100 text-green-700",
+    registration: "bg-purple-100 text-purple-700",
+    general: "bg-gray-100 text-gray-500",
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -93,6 +99,9 @@ export default async function SurveysPage({
                     <h3 className="font-semibold text-gray-900 truncate">{survey.title}</h3>
                     <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", statusColors[survey.status] || statusColors.draft)}>
                       {statusLabels[survey.status] || survey.status}
+                    </span>
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", categoryColors[survey.category] || categoryColors.general)}>
+                      {SURVEY_CATEGORY_LABELS[survey.category] || survey.category}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-400">
