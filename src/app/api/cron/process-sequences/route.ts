@@ -10,6 +10,7 @@ import {
 import { eq, and, asc } from "drizzle-orm";
 import { sendEmail } from "@/lib/email";
 import { addTrackingPixel, rewriteLinks } from "@/lib/email/tracking";
+import { replacePlaceholders } from "@/lib/email/send-campaign";
 
 export async function GET(request: NextRequest) {
   // 認証: CRON_SECRET で照合
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
           .select({
             enrollment: stepCampaignEnrollments,
             customerEmail: customers.email,
+            customerName: customers.fullName,
           })
           .from(stepCampaignEnrollments)
           .innerJoin(
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
         let failedCount = 0;
         let completedCount = 0;
 
-        for (const { enrollment, customerEmail } of enrollments) {
+        for (const { enrollment, customerEmail, customerName } of enrollments) {
           // currentStep に対応するステップを取得
           // currentStep は次に送信すべきステップのインデックス（0始まり）
           const currentStepIndex = enrollment.currentStep;
@@ -112,12 +114,16 @@ export async function GET(request: NextRequest) {
 
             const sendId = sendRecord[0].id;
 
+            // プレースホルダー置換
+            const personalizedBody = replacePlaceholders(step.bodyHtml, customerName);
+            const personalizedSubject = replacePlaceholders(step.subject, customerName);
+
             // トラッキング付きHTMLを生成
-            let trackedHtml = addTrackingPixel(step.bodyHtml, sendId, baseUrl);
+            let trackedHtml = addTrackingPixel(personalizedBody, sendId, baseUrl);
             trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl);
 
             // メール送信
-            await sendEmail(customerEmail, step.subject, trackedHtml);
+            await sendEmail(customerEmail, personalizedSubject, trackedHtml);
 
             // 成功 → sent に更新
             await db

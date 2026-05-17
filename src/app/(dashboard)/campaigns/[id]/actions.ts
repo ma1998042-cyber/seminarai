@@ -12,6 +12,7 @@ import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 import { addTrackingPixel, rewriteLinks } from '@/lib/email/tracking'
+import { replacePlaceholders } from '@/lib/email/send-campaign'
 
 async function getSessionAndOrg() {
   const auth = getAuth()
@@ -177,11 +178,15 @@ export async function updateCampaignAction(
 
           const sendId = sendRecord[0].id
 
+          // プレースホルダー置換
+          const personalizedBody = replacePlaceholders(form.body_html, recipient.name)
+          const personalizedSubject = replacePlaceholders(form.subject, recipient.name)
+
           // トラッキング付きHTMLを生成
-          let trackedHtml = addTrackingPixel(form.body_html, sendId, baseUrl)
+          let trackedHtml = addTrackingPixel(personalizedBody, sendId, baseUrl)
           trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl)
 
-          await sendEmail(recipient.email, form.subject, trackedHtml)
+          await sendEmail(recipient.email, personalizedSubject, trackedHtml)
 
           // 成功 → sent に更新
           await ctx.db
@@ -259,7 +264,7 @@ async function resolveTargetEmails(
   targetType: string,
   tagIds: string[],
   surveyId?: string,
-): Promise<{ email: string; customerId: string | null }[]> {
+): Promise<{ email: string; customerId: string | null; name: string | null }[]> {
   if (targetType === 'survey_respondents' && surveyId) {
     const responses = await db
       .select({ email: surveyResponses.respondentEmail, name: surveyResponses.respondentName })
@@ -275,13 +280,22 @@ async function resolveTargetEmails(
         eq(customers.organizationId, orgId),
         inArray(customers.email, uniqueEmails),
       ),
-      columns: { id: true, email: true },
+      columns: { id: true, email: true, fullName: true },
     })
 
-    const customerMap = new Map<string, string>(existingCustomers.map((c: any) => [c.email, c.id]))
+    const customerMap = new Map<string, { id: string; name: string | null }>(
+      existingCustomers.map((c: any) => [c.email, { id: c.id, name: c.fullName }])
+    )
+
+    // survey_respondents の名前をフォールバックに使う
+    const responseNameMap = new Map<string, string>(
+      responses.filter((r: any) => r.email && r.name).map((r: any) => [r.email, r.name])
+    )
+
     return uniqueEmails.map(email => ({
       email,
-      customerId: customerMap.get(email) ?? null,
+      customerId: customerMap.get(email)?.id ?? null,
+      name: customerMap.get(email)?.name ?? responseNameMap.get(email) ?? null,
     }))
   }
 
@@ -299,19 +313,19 @@ async function resolveTargetEmails(
         eq(customers.organizationId, orgId),
         inArray(customers.id, customerIds),
       ),
-      columns: { id: true, email: true },
+      columns: { id: true, email: true, fullName: true },
     })
 
-    return results.map((c: any) => ({ email: c.email, customerId: c.id }))
+    return results.map((c: any) => ({ email: c.email, customerId: c.id, name: c.fullName ?? null }))
   }
 
   // 全顧客
   const allCustomers = await db.query.customers.findMany({
     where: eq(customers.organizationId, orgId),
-    columns: { id: true, email: true },
+    columns: { id: true, email: true, fullName: true },
   })
 
-  return allCustomers.map((c: any) => ({ email: c.email, customerId: c.id }))
+  return allCustomers.map((c: any) => ({ email: c.email, customerId: c.id, name: c.fullName ?? null }))
 }
 
 export async function getCustomersByTarget(

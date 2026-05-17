@@ -11,6 +11,22 @@ import { addTrackingPixel, rewriteLinks } from "@/lib/email/tracking";
 
 type Database = any;
 
+/**
+ * メール本文中のプレースホルダーを顧客情報に置換する
+ * {{name}} → 顧客名、{{name}}様 → 名前がない場合は「様」ごと除去
+ */
+export function replacePlaceholders(body: string, name: string | null | undefined): string {
+  const resolvedName = name?.trim() || "";
+
+  // {{name}}様 パターン: 名前がない場合は「様」ごと除去
+  let result = body.replace(/\{\{name\}\}様/g, resolvedName ? `${resolvedName}様` : "");
+
+  // 残りの {{name}} を置換
+  result = result.replace(/\{\{name\}\}/g, resolvedName);
+
+  return result;
+}
+
 interface SendCampaignResult {
   status: "sent" | "partial" | "no_recipients" | "error";
   sentCount: number;
@@ -97,14 +113,18 @@ export async function sendCampaignEmails(
 
       const campaignFormat = campaign.format === "text" ? "text" : "html";
 
+      // プレースホルダー置換
+      const personalizedBody = replacePlaceholders(campaign.bodyHtml, recipient.name);
+      const personalizedSubject = replacePlaceholders(campaign.subject, recipient.name);
+
       if (campaignFormat === "text") {
         // テキスト形式: トラッキングなしでプレーンテキスト送信
-        await sendEmail(recipient.email, campaign.subject, campaign.bodyHtml, "text");
+        await sendEmail(recipient.email, personalizedSubject, personalizedBody, "text");
       } else {
         // HTML形式: トラッキング付きHTMLを生成
-        let trackedHtml = addTrackingPixel(campaign.bodyHtml, sendId, baseUrl);
+        let trackedHtml = addTrackingPixel(personalizedBody, sendId, baseUrl);
         trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl);
-        await sendEmail(recipient.email, campaign.subject, trackedHtml, "html");
+        await sendEmail(recipient.email, personalizedSubject, trackedHtml, "html");
       }
 
       await db
@@ -171,7 +191,7 @@ async function resolveTargetEmails(
   tagIds: string[],
   surveyId?: string,
   customerIds?: string[],
-): Promise<{ email: string; customerId: string | null }[]> {
+): Promise<{ email: string; customerId: string | null; name: string | null }[]> {
   if (targetType === "specific_customers" && customerIds && customerIds.length > 0) {
     const results = await db.query.customers.findMany({
       where: and(
@@ -179,10 +199,10 @@ async function resolveTargetEmails(
         inArray(customers.id, customerIds),
         eq(customers.emailOptIn, true),
       ),
-      columns: { id: true, email: true },
+      columns: { id: true, email: true, fullName: true },
     });
 
-    return results.map((c: any) => ({ email: c.email, customerId: c.id }));
+    return results.map((c: any) => ({ email: c.email, customerId: c.id, name: c.fullName ?? null }));
   }
 
   if (targetType === "survey_respondents" && surveyId) {
@@ -207,11 +227,11 @@ async function resolveTargetEmails(
         inArray(customers.email, uniqueEmails),
         eq(customers.emailOptIn, true),
       ),
-      columns: { id: true, email: true },
+      columns: { id: true, email: true, fullName: true },
     });
 
-    const customerMap = new Map(
-      existingCustomers.map((c: any) => [c.email, c.id]),
+    const customerMap = new Map<string, { id: string; name: string | null }>(
+      existingCustomers.map((c: any) => [c.email, { id: c.id, name: c.fullName }]),
     );
 
     const optOutCustomers = await db.query.customers.findMany({
@@ -224,11 +244,17 @@ async function resolveTargetEmails(
     });
     const optOutEmails = new Set(optOutCustomers.map((c: any) => c.email));
 
+    // survey_respondents の名前をフォールバックに使う
+    const responseNameMap = new Map<string, string>(
+      responses.filter((r: any) => r.email && r.name).map((r: any) => [r.email, r.name]),
+    );
+
     return uniqueEmails
       .filter((email) => !optOutEmails.has(email))
       .map((email) => ({
         email,
-        customerId: (customerMap.get(email) as string) ?? null,
+        customerId: (customerMap.get(email)?.id as string) ?? null,
+        name: customerMap.get(email)?.name ?? responseNameMap.get(email) ?? null,
       }));
   }
 
@@ -249,10 +275,10 @@ async function resolveTargetEmails(
         inArray(customers.id, customerIds),
         eq(customers.emailOptIn, true),
       ),
-      columns: { id: true, email: true },
+      columns: { id: true, email: true, fullName: true },
     });
 
-    return results.map((c: any) => ({ email: c.email, customerId: c.id }));
+    return results.map((c: any) => ({ email: c.email, customerId: c.id, name: c.fullName ?? null }));
   }
 
   // 全顧客（emailOptIn=true のみ）
@@ -261,11 +287,12 @@ async function resolveTargetEmails(
       eq(customers.organizationId, orgId),
       eq(customers.emailOptIn, true),
     ),
-    columns: { id: true, email: true },
+    columns: { id: true, email: true, fullName: true },
   });
 
   return allCustomers.map((c: any) => ({
     email: c.email,
     customerId: c.id,
+    name: c.fullName ?? null,
   }));
 }
