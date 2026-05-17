@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { getDbFromContext } from "@/lib/db";
 import { getSurveyById, getSurveyQuestions } from "@/lib/db/queries/surveys";
 import SurveyForm from "./SurveyForm";
@@ -41,8 +42,20 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
   const questions = survey.questions;
 
   return (
-    <SurveyForm
-      survey={{
+    <>
+      {survey.eventId && (
+        <div className="max-w-2xl mx-auto pt-8 px-4">
+          <a
+            href="/events/public"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            イベント一覧に戻る
+          </a>
+        </div>
+      )}
+      <SurveyForm
+        survey={{
         id: survey.id,
         organization_id: survey.organizationId,
         title: survey.title,
@@ -60,6 +73,7 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
         is_required: q.isRequired,
         options: Array.isArray(q.options) ? (q.options as string[]) : null,
       }))}
-    />
+      />
+    </>
   );
 }
