@@ -1,28 +1,16 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, CalendarDays, Users, ExternalLink, Globe } from "lucide-react";
-import { formatDate, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LABELS, cn } from "@/lib/utils";
+import { Plus, CalendarDays, Globe, ExternalLink } from "lucide-react";
+import { EVENT_VISIBILITY_LABELS, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getEvents, countEvents } from "@/lib/db/queries/events";
 import Pagination from "@/components/Pagination";
+import EventList from "./EventList";
 
 const PAGE_SIZE = 20;
-
-const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-600",
-  active: "bg-green-100 text-green-700",
-  closed: "bg-gray-100 text-gray-500",
-  archived: "bg-amber-100 text-amber-700",
-};
-
-const visibilityColors: Record<string, string> = {
-  public: "bg-blue-100 text-blue-700",
-  unlisted: "bg-yellow-100 text-yellow-700",
-  draft: "bg-gray-100 text-gray-500",
-};
 
 const scheduleTabs = [
   { value: "upcoming", label: "開催予定" },
@@ -138,41 +126,15 @@ export default async function EventsPage({
 
       {/* Events list */}
       {events && events.length > 0 ? (
-        <div className="space-y-3">
-          {events.map((event) => (
-            <Link
-              key={event.id}
-              href={`/events/${event.id}`}
-              className="flex items-center gap-4 bg-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all group"
-            >
-              <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <CalendarDays className="w-6 h-6 text-indigo-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
-                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", statusColors[event.status] || statusColors.draft)}>
-                    {EVENT_STATUS_LABELS[event.status] || event.status}
-                  </span>
-                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", visibilityColors[event.visibility] || visibilityColors.draft)}>
-                    {EVENT_VISIBILITY_LABELS[event.visibility] || event.visibility}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <span>{EVENT_TYPE_LABELS[event.eventType] || event.eventType}</span>
-                  {event.startDate && (
-                    <span>{formatDate(event.startDate)}</span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {event.registrationCount}名
-                  </span>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
-            </Link>
-          ))}
-        </div>
+        <EventList events={events.map((e) => ({
+          id: e.id,
+          title: e.title,
+          status: e.status,
+          visibility: e.visibility,
+          eventType: e.eventType,
+          startDate: e.startDate,
+          registrationCount: e.registrationCount,
+        }))} />
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
           <CalendarDays className="w-12 h-12 text-gray-200 mx-auto mb-4" />
