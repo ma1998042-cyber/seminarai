@@ -22,6 +22,7 @@ export async function updateEventAction(eventId: string, form: {
   thumbnail_url: string
   image_urls: string[]
   show_remaining_capacity: boolean
+  participation_requirements: string
 }): Promise<{ error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -51,6 +52,7 @@ export async function updateEventAction(eventId: string, form: {
     thumbnailUrl: form.image_urls[0] || form.thumbnail_url || null,
     imageUrls: form.image_urls.length > 0 ? form.image_urls : (form.thumbnail_url ? [form.thumbnail_url] : []),
     showRemainingCapacity: form.show_remaining_capacity ? 1 : 0,
+    participationRequirements: form.participation_requirements || null,
   })
 
   if (!event) return { error: 'イベントの更新に失敗しました' }

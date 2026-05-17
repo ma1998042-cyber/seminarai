@@ -51,6 +51,7 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
         thumbnailUrl: event.thumbnailUrl,
         imageUrls: (event.imageUrls as string[]) || [],
         showRemainingCapacity: event.showRemainingCapacity,
+        participationRequirements: event.participationRequirements,
       }}
     />
   );

@@ -95,6 +95,7 @@ export async function updateEvent(
     customFields: unknown[];
     settings: Record<string, unknown>;
     showRemainingCapacity: number;
+    participationRequirements: string | null;
   }>,
 ) {
   const [event] = await db

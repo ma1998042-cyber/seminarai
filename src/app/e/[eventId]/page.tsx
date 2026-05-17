@@ -1,9 +1,9 @@
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvent } from "@/lib/db/queries/events";
-import { surveys } from "@/lib/db/schema";
+import { surveys, surveyQuestions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, MapPin, Globe, Users, Info } from "lucide-react";
+import { CalendarDays, MapPin, Globe, Users, AlertCircle } from "lucide-react";
 import EventRegistrationForm from "./EventRegistrationForm";
 
 export default async function PublicEventPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -35,7 +35,15 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
       eq(surveys.category, "registration"),
     ),
   });
-  const hasRegistrationSurvey = !!registrationSurvey;
+
+  // アンケートがあれば質問を取得
+  let questions: { id: string; questionType: string; title: string; description: string | null; isRequired: boolean; options: unknown[] | null }[] = [];
+  if (registrationSurvey) {
+    questions = await db.query.surveyQuestions.findMany({
+      where: eq(surveyQuestions.surveyId, registrationSurvey.id),
+      orderBy: (q, { asc }) => [asc(q.sortOrder)],
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -119,23 +127,34 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
           </div>
         </div>
 
-        {/* 申し込みフォーム */}
-        {hasRegistrationSurvey ? (
-          <EventRegistrationForm
-            eventId={event.id}
-            isFull={isFull}
-          />
-        ) : (
-          <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Info className="w-8 h-8 text-blue-400" />
+        {/* 参加条件 */}
+        {event.participationRequirements && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-amber-800 mb-1">参加条件</h3>
+                <p className="text-sm text-amber-700 whitespace-pre-wrap">{event.participationRequirements}</p>
               </div>
-              <h2 className="text-lg font-semibold text-gray-700 mb-2">現在申し込みフォームは準備中です</h2>
-              <p className="text-sm text-gray-400">しばらくお待ちください</p>
             </div>
           </div>
         )}
+
+        {/* 申し込みフォーム */}
+        <EventRegistrationForm
+          eventId={event.id}
+          isFull={isFull}
+          surveyId={registrationSurvey?.id ?? null}
+          organizationId={event.organizationId}
+          questions={questions.map((q) => ({
+            id: q.id,
+            question_type: q.questionType,
+            title: q.title,
+            description: q.description ?? null,
+            is_required: q.isRequired,
+            options: Array.isArray(q.options) ? (q.options as string[]) : null,
+          }))}
+        />
       </div>
     </div>
   );

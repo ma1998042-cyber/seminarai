@@ -111,6 +111,7 @@ export const events = sqliteTable("events", {
   onlineUrl: text("online_url"),
   capacity: integer("capacity"),
   showRemainingCapacity: integer("show_remaining_capacity").notNull().default(0),
+  participationRequirements: text("participation_requirements"),
   registrationCount: integer("registration_count").notNull().default(0),
   visibility: text("visibility").notNull().default("draft"),
   thumbnailUrl: text("thumbnail_url"),

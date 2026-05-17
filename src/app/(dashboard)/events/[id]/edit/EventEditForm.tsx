@@ -32,6 +32,7 @@ type EventData = {
   thumbnailUrl: string | null;
   imageUrls: string[];
   showRemainingCapacity: number;
+  participationRequirements: string | null;
 };
 
 export default function EventEditForm({ event, hasRegistrationSurvey }: { event: EventData; hasRegistrationSurvey: boolean }) {
@@ -61,6 +62,7 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
     status: event.status,
     visibility: event.visibility,
     show_remaining_capacity: event.showRemainingCapacity === 1,
+    participation_requirements: event.participationRequirements || "",
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,6 +106,7 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
       thumbnail_url: imageUrls[0] || "",
       image_urls: imageUrls,
       show_remaining_capacity: form.show_remaining_capacity,
+      participation_requirements: form.participation_requirements,
     });
 
     if (result.error) {
@@ -153,6 +156,17 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">参加条件</label>
+          <textarea
+            value={form.participation_requirements}
+            onChange={(e) => setForm({ ...form, participation_requirements: e.target.value })}
+            rows={2}
+            placeholder="例: PC持参必須、Python基礎知識がある方"
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
           />
         </div>

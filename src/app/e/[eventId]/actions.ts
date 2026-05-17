@@ -2,13 +2,20 @@
 
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvent, upsertEventRegistration } from "@/lib/db/queries/events";
+import { createSurveyResponse, incrementSurveyResponseCount } from "@/lib/db/queries/surveys";
 import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { customers, events, eventRegistrations } from "@/lib/db/schema";
 
 export async function registerForEventAction(
   eventId: string,
-  formData: { email: string; fullName: string }
+  formData: {
+    email: string;
+    fullName: string;
+    surveyId?: string;
+    organizationId: string;
+    answers?: Record<string, unknown>;
+  }
 ): Promise<{ error?: string }> {
   const db = getDbFromContext();
 
@@ -73,6 +80,19 @@ export async function registerForEventAction(
         updatedAt: new Date().toISOString(),
       })
       .where(eq(events.id, eventId));
+
+    // 6. アンケート回答を保存（surveyIdがある場合）
+    if (formData.surveyId && formData.answers) {
+      await createSurveyResponse(db, {
+        surveyId: formData.surveyId,
+        organizationId: formData.organizationId,
+        customerId: customer.id,
+        respondentName: formData.fullName,
+        respondentEmail: formData.email,
+        answers: formData.answers,
+      });
+      await incrementSurveyResponseCount(db, formData.surveyId);
+    }
 
     revalidatePath('/events');
     revalidatePath(`/events/${eventId}`);
