@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getDbFromContext } from "@/lib/db";
 import { getSurveyById, getSurveyQuestions } from "@/lib/db/queries/surveys";
 import SurveyForm from "./SurveyForm";
@@ -8,6 +8,11 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
   const db = getDbFromContext();
 
   const survey = await getSurveyById(db, surveyId);
+
+  // イベント紐づけ済みのアンケートは /e/{eventId} にリダイレクト
+  if (survey?.eventId) {
+    redirect(`/e/${survey.eventId}`);
+  }
 
   if (!survey || survey.status !== "active") {
     return (
