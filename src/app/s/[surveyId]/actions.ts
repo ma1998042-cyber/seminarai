@@ -6,6 +6,7 @@ import { getDbFromContext } from '@/lib/db'
 import { createSurveyResponse, incrementSurveyResponseCount } from '@/lib/db/queries/surveys'
 import { upsertCustomerByEmail } from '@/lib/db/queries/customers'
 import { surveys, eventRegistrations, events } from '@/lib/db/schema'
+import { sendEmail } from '@/lib/email'
 
 export async function submitSurveyResponse(
   surveyId: string,
@@ -20,7 +21,7 @@ export async function submitSurveyResponse(
     // アンケート情報を取得
     const survey = await db.query.surveys.findFirst({
       where: eq(surveys.id, surveyId),
-      columns: { category: true, eventId: true, organizationId: true, deadline: true, isAnonymous: true },
+      columns: { category: true, eventId: true, organizationId: true, deadline: true, isAnonymous: true, completionEmailSubject: true, completionEmailBody: true },
     })
 
     // 期限チェック
@@ -56,6 +57,31 @@ export async function submitSurveyResponse(
 
     // response_count をインクリメント
     await incrementSurveyResponseCount(db, surveyId)
+
+    // 完了メール送信（設定されている場合）
+    if (survey?.completionEmailBody && respondentEmail) {
+      try {
+        let eventData: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } | undefined
+        if (survey.eventId) {
+          const event = await db.query.events.findFirst({
+            where: eq(events.id, survey.eventId),
+            columns: { title: true, startDate: true, location: true, onlineUrl: true },
+          })
+          if (event) eventData = event
+        }
+        const subject = replaceEmailPlaceholders(
+          survey.completionEmailSubject || 'ご回答ありがとうございます',
+          { name: respondentName, email: respondentEmail, event: eventData }
+        )
+        const body = replaceEmailPlaceholders(
+          survey.completionEmailBody,
+          { name: respondentName, email: respondentEmail, event: eventData }
+        )
+        await sendEmail(respondentEmail, subject, body, 'text')
+      } catch {
+        // メール送信失敗は回答登録に影響させない
+      }
+    }
 
     // category=registration かつ eventId がある場合、参加者登録を行う
     if (
@@ -102,4 +128,17 @@ export async function submitSurveyResponse(
   } catch {
     return { error: '送信に失敗しました。もう一度お試しください' }
   }
+}
+
+function replaceEmailPlaceholders(
+  template: string,
+  context: { name: string; email: string; event?: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } }
+): string {
+  return template
+    .replace(/\{\{name\}\}/g, context.name || '')
+    .replace(/\{\{email\}\}/g, context.email || '')
+    .replace(/\{\{event_title\}\}/g, context.event?.title || '')
+    .replace(/\{\{event_date\}\}/g, context.event?.startDate || '')
+    .replace(/\{\{event_location\}\}/g, context.event?.location || '')
+    .replace(/\{\{online_url\}\}/g, context.event?.onlineUrl || '')
 }
