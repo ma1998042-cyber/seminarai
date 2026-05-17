@@ -5,6 +5,7 @@ import { getAuth } from '@/lib/auth'
 import { getDbFromContext } from '@/lib/db'
 import { getUserProfile } from '@/lib/db/queries/users'
 import { createEvent } from '@/lib/db/queries/events'
+import { createSurvey } from '@/lib/db/queries/surveys'
 import { revalidatePath } from 'next/cache'
 
 export async function createEventAction(form: {
@@ -54,6 +55,26 @@ export async function createEventAction(form: {
   })
 
   if (!event) return { error: 'イベントの作成に失敗しました' }
+
+  // アンケートを自動作成（申し込みアンケート・終了後アンケート）
+  await Promise.all([
+    createSurvey(db, {
+      organizationId: profile.currentOrganizationId,
+      eventId: event.id,
+      title: `${form.title} - 申し込みアンケート`,
+      category: 'pre_event',
+      status: 'draft',
+      createdBy: user.id,
+    }),
+    createSurvey(db, {
+      organizationId: profile.currentOrganizationId,
+      eventId: event.id,
+      title: `${form.title} - 終了後アンケート`,
+      category: 'post_event',
+      status: 'draft',
+      createdBy: user.id,
+    }),
+  ])
 
   revalidatePath('/events')
   return { eventId: event.id }
