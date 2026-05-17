@@ -5,7 +5,9 @@ import { getPublicEvent, upsertEventRegistration } from "@/lib/db/queries/events
 import { createSurveyResponse, incrementSurveyResponseCount } from "@/lib/db/queries/surveys";
 import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { customers, events, eventRegistrations } from "@/lib/db/schema";
+import { customers, events, eventRegistrations, surveys } from "@/lib/db/schema";
+import { sendEmail } from "@/lib/email";
+import { formatDateTime } from "@/lib/utils";
 
 export async function registerForEventAction(
   eventId: string,
@@ -92,6 +94,26 @@ export async function registerForEventAction(
         answers: formData.answers,
       });
       await incrementSurveyResponseCount(db, formData.surveyId);
+
+      // 7. 完了メール送信（設定されている場合）
+      try {
+        const survey = await db.query.surveys.findFirst({
+          where: eq(surveys.id, formData.surveyId),
+        });
+        if (survey?.completionEmailBody) {
+          const subject = replaceEmailPlaceholders(
+            survey.completionEmailSubject || "ご回答ありがとうございます",
+            { name: formData.fullName, email: formData.email, event }
+          );
+          const body = replaceEmailPlaceholders(
+            survey.completionEmailBody,
+            { name: formData.fullName, email: formData.email, event }
+          );
+          await sendEmail(formData.email, subject, body, "text");
+        }
+      } catch {
+        // メール送信失敗は回答登録に影響させない
+      }
     }
 
     revalidatePath('/events');
@@ -101,4 +123,18 @@ export async function registerForEventAction(
   } catch {
     return { error: "送信に失敗しました。もう一度お試しください" };
   }
+}
+
+function replaceEmailPlaceholders(
+  template: string,
+  context: { name: string; email: string; event: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } }
+): string {
+  return template
+    .replace(/\{\{name\}\}/g, context.name || "")
+    .replace(/\{\{email\}\}/g, context.email || "")
+    .replace(/\{\{event_title\}\}/g, context.event.title || "")
+    .replace(/\{\{event_date\}\}/g, context.event.startDate ? formatDateTime(context.event.startDate) : "")
+    .replace(/\{\{event_location\}\}/g, context.event.location || "")
+    .replace(/\{\{event_url\}\}/g, "")
+    .replace(/\{\{online_url\}\}/g, context.event.onlineUrl || "");
 }
