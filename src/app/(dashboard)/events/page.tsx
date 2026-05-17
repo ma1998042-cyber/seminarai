@@ -24,6 +24,11 @@ const visibilityColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-500",
 };
 
+const scheduleTabs = [
+  { value: "upcoming", label: "開催予定" },
+  { value: "ended", label: "終了済み" },
+];
+
 const visibilityTabs = [
   { value: "", label: "すべて" },
   { value: "public", label: "一般公開" },
@@ -34,9 +39,10 @@ const visibilityTabs = [
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ visibility?: string; page?: string }>;
+  searchParams: Promise<{ visibility?: string; page?: string; tab?: string }>;
 }) {
-  const { visibility, page: pageParam } = await searchParams;
+  const { visibility, page: pageParam, tab } = await searchParams;
+  const currentTab = tab === "ended" ? "ended" : "upcoming";
   const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
@@ -48,13 +54,15 @@ export default async function EventsPage({
   const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
+  const ended = currentTab === "ended";
   const [events, totalCount] = await Promise.all([
     getEvents(db, orgId, {
       visibility: visibility || undefined,
+      ended,
       limit: PAGE_SIZE,
       offset: (currentPage - 1) * PAGE_SIZE,
     }),
-    countEvents(db, orgId, visibility || undefined),
+    countEvents(db, orgId, { visibility: visibility || undefined, ended }),
   ]);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -86,22 +94,46 @@ export default async function EventsPage({
         </div>
       </div>
 
-      {/* Visibility tabs */}
-      <div className="flex gap-2">
-        {visibilityTabs.map((tab) => (
+      {/* Schedule tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {scheduleTabs.map((t) => (
           <Link
-            key={tab.value}
-            href={tab.value ? `/events?visibility=${tab.value}` : "/events"}
+            key={t.value}
+            href={t.value === "upcoming" ? (visibility ? `/events?visibility=${visibility}` : "/events") : (visibility ? `/events?tab=ended&visibility=${visibility}` : "/events?tab=ended")}
             className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
-              (visibility || "") === tab.value
-                ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                : "border-gray-200 text-gray-600 hover:border-gray-300"
+              "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+              currentTab === t.value
+                ? "border-indigo-500 text-indigo-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             )}
           >
-            {tab.label}
+            {t.label}
           </Link>
         ))}
+      </div>
+
+      {/* Visibility tabs */}
+      <div className="flex gap-2">
+        {visibilityTabs.map((vTab) => {
+          const params = new URLSearchParams();
+          if (currentTab === "ended") params.set("tab", "ended");
+          if (vTab.value) params.set("visibility", vTab.value);
+          const href = params.toString() ? `/events?${params.toString()}` : "/events";
+          return (
+            <Link
+              key={vTab.value}
+              href={href}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                (visibility || "") === vTab.value
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+              )}
+            >
+              {vTab.label}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Events list */}
