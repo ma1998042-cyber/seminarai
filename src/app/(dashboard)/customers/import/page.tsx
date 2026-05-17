@@ -36,30 +36,68 @@ function downloadSampleCsv() {
 }
 
 function parseCsv(text: string): { headers: string[]; rows: CsvRow[] } {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length === 0) return { headers: [], rows: [] };
+  // RFC 4180 準拠パーサー: クォート内改行・エスケープされたクォート("")に対応
+  const records: string[][] = [];
+  let current = "";
+  let inQuotes = false;
+  let fields: string[] = [];
 
-  const parseRow = (line: string): string[] => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') {
-        inQuotes = !inQuotes;
-      } else if (line[i] === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        // "" はエスケープされたクォート
+        if (i + 1 < text.length && text[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          // クォート終了
+          inQuotes = false;
+        }
       } else {
-        current += line[i];
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        fields.push(current.trim());
+        current = "";
+      } else if (ch === "\r") {
+        // \r\n or standalone \r → レコード区切り
+        if (i + 1 < text.length && text[i + 1] === "\n") {
+          i++;
+        }
+        fields.push(current.trim());
+        current = "";
+        if (fields.some((f) => f !== "")) {
+          records.push(fields);
+        }
+        fields = [];
+      } else if (ch === "\n") {
+        fields.push(current.trim());
+        current = "";
+        if (fields.some((f) => f !== "")) {
+          records.push(fields);
+        }
+        fields = [];
+      } else {
+        current += ch;
       }
     }
-    result.push(current.trim());
-    return result;
-  };
+  }
 
-  const headers = parseRow(lines[0]);
-  const rows = lines.slice(1).map((line) => {
-    const values = parseRow(line);
+  // 最後のレコードを処理
+  fields.push(current.trim());
+  if (fields.some((f) => f !== "")) {
+    records.push(fields);
+  }
+
+  if (records.length === 0) return { headers: [], rows: [] };
+
+  const headers = records[0];
+  const rows = records.slice(1).map((values) => {
     return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""]));
   });
 
