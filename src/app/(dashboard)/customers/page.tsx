@@ -6,9 +6,10 @@ import { getTags } from "@/lib/db/queries/tags";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Plus, Users, Tag, Upload, ClipboardList } from "lucide-react";
-import { formatDate, cn } from "@/lib/utils";
+import { Plus, Users, Tag, Upload } from "lucide-react";
+import { cn } from "@/lib/utils";
 import CustomerSearch from "./CustomerSearch";
+import CustomerTable from "./CustomerTable";
 import Pagination from "@/components/Pagination";
 
 const PAGE_SIZE = 20;
@@ -100,86 +101,12 @@ export default async function CustomersPage({
       <CustomerSearch tags={allTags ?? []} currentQ={q} currentTag={tag} currentStatus={status} />
 
       {customerList.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-50 bg-gray-50/50">
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">顧客</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">会社・役職</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">ステータス</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">タグ</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">回答数</th>
-                <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">登録日</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {customerList.map((customer: any) => {
-                const customerTags = (customer.customerTags as any[])
-                  ?.map((ct: any) => ct.tag)
-                  .filter(Boolean) ?? [];
-                return (
-                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <Link href={`/customers/${customer.id}`} className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm font-bold text-indigo-700">
-                            {(customer.fullName || customer.email || "U").charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                            {customer.fullName || "名前なし"}
-                          </p>
-                          <p className="text-xs text-gray-400">{customer.email}</p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-600">{customer.company || "—"}</p>
-                      {customer.jobTitle && (
-                        <p className="text-xs text-gray-400">{customer.jobTitle}</p>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", statusColors[customer.status] || statusColors.active)}>
-                        {statusLabels[customer.status] || customer.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {customerTags.slice(0, 3).map((tag: any) => (
-                          <span
-                            key={tag.id}
-                            className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{ backgroundColor: tag.color + "20", color: tag.color }}
-                          >
-                            {tag.name}
-                          </span>
-                        ))}
-                        {customerTags.length > 3 && (
-                          <span className="text-xs text-gray-400">+{customerTags.length - 3}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {surveyCountMap[customer.email] ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                          <ClipboardList className="w-3.5 h-3.5" />
-                          {surveyCountMap[customer.email]}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-300">0</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-400">
-                      {formatDate(customer.createdAt)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <CustomerTable
+          customerList={customerList as any}
+          surveyCountMap={surveyCountMap}
+          statusColors={statusColors}
+          statusLabels={statusLabels}
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
           <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
