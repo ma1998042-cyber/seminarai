@@ -80,6 +80,30 @@ export default function NewCampaignPage() {
           }));
         }
       }
+
+      // クエリパラメータでタグ指定がある場合（AI提案からの遷移等）
+      const targetTagIds = searchParams.get("targetTagIds");
+      if (targetType === "tag" && targetTagIds) {
+        const ids = targetTagIds.split(",").filter(Boolean);
+        if (ids.length > 0) {
+          setForm((prev) => ({
+            ...prev,
+            target_type: "tag",
+            target_tag_ids: ids,
+          }));
+        }
+      }
+
+      // クエリパラメータで件名・タイトルが指定されている場合
+      const subjectParam = searchParams.get("subject");
+      const titleParam = searchParams.get("title");
+      if (subjectParam || titleParam) {
+        setForm((prev) => ({
+          ...prev,
+          ...(subjectParam ? { subject: subjectParam } : {}),
+          ...(titleParam ? { title: titleParam } : {}),
+        }));
+      }
     };
     fetchData();
   }, [searchParams]);

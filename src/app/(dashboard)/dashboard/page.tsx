@@ -9,6 +9,7 @@ import { getPendingInvitationsByEmail } from "@/lib/db/queries/invitations";
 import { events, customers, surveys, emailCampaigns } from "@/lib/db/schema";
 import CreateOrgCard from "./CreateOrgCard";
 import { EmailTrackingChart } from "./EmailTrackingChart";
+import { AiSegmentSuggestions } from "./AiSegmentSuggestions";
 import { getDailyEmailTrackingStats } from "@/lib/db/queries/campaigns";
 import {
   CalendarDays,
@@ -148,6 +149,9 @@ export default async function DashboardPage() {
 
       {/* Email tracking chart */}
       <EmailTrackingChart data={emailTrackingData} />
+
+      {/* AI Segment Suggestions */}
+      <AiSegmentSuggestions />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent events */}
