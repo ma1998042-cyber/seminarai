@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList, FileText } from "lucide-react";
+import { VariableInsertButton } from "@/components/campaigns/VariableInsertButton";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getTagsForOrg, getSurveysForOrg, createCampaignAction, getCustomersByTarget, getTemplatesForOrg } from "./actions";
 
@@ -22,6 +23,8 @@ export default function NewCampaignPage() {
   >([]);
   const [previewTotal, setPreviewTotal] = useState(0);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -223,17 +226,24 @@ export default function NewCampaignPage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">メール本文</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              本文（HTML） <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                本文（HTML） <span className="text-red-500">*</span>
+              </label>
+              <VariableInsertButton
+                textareaRef={bodyTextareaRef}
+                onInsert={(newValue) => setForm({ ...form, body_html: newValue })}
+              />
+            </div>
             <textarea
+              ref={bodyTextareaRef}
               value={form.body_html}
               onChange={(e) => setForm({ ...form, body_html: e.target.value })}
               rows={12}
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm resize-none"
               placeholder={`<h1>こんにちは！</h1>\n<p>先日はセミナーにご参加いただきありがとうございました。</p>\n<p>...</p>`}
             />
-            <p className="text-xs text-gray-400 mt-1">HTMLまたはテキストで本文を入力してください</p>
+            <p className="text-xs text-gray-400 mt-1">HTMLまたはテキストで本文を入力してください。差し込み変数が使えます。</p>
           </div>
         </div>
 
