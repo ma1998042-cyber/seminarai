@@ -96,6 +96,7 @@ export async function updateEvent(
     settings: Record<string, unknown>;
     showRemainingCapacity: number;
     participationRequirements: string | null;
+    registrationDeadline: string | null;
   }>,
 ) {
   const [event] = await db

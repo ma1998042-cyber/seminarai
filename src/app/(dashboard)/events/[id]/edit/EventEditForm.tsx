@@ -33,6 +33,7 @@ type EventData = {
   imageUrls: string[];
   showRemainingCapacity: number;
   participationRequirements: string | null;
+  registrationDeadline: string | null;
 };
 
 export default function EventEditForm({ event, hasRegistrationSurvey }: { event: EventData; hasRegistrationSurvey: boolean }) {
@@ -63,6 +64,7 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
     visibility: event.visibility,
     show_remaining_capacity: event.showRemainingCapacity === 1,
     participation_requirements: event.participationRequirements || "",
+    registration_deadline: event.registrationDeadline || "",
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +109,7 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
       image_urls: imageUrls,
       show_remaining_capacity: form.show_remaining_capacity,
       participation_requirements: form.participation_requirements,
+      registration_deadline: form.registration_deadline,
     });
 
     if (result.error) {
@@ -262,6 +265,17 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">申し込み期限</label>
+          <input
+            type="datetime-local"
+            value={form.registration_deadline}
+            onChange={(e) => setForm({ ...form, registration_deadline: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+          />
+          <p className="mt-1 text-xs text-gray-400">設定すると、期限を過ぎた場合に申し込みフォームが非表示になります</p>
         </div>
 
         <div>

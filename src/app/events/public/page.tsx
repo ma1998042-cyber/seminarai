@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvents } from "@/lib/db/queries/events";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, MapPin, Globe, Users } from "lucide-react";
+import { CalendarDays, MapPin, Globe, Users, Clock } from "lucide-react";
 
 export default async function PublicEventsPage({
   searchParams,
@@ -70,6 +70,9 @@ export default async function PublicEventsPage({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => {
               const isFull = event.capacity != null && event.registrationCount >= event.capacity;
+              const isDeadlineExpired = event.registrationDeadline
+                ? new Date(event.registrationDeadline) < new Date()
+                : false;
 
               return (
                 <Link
@@ -128,6 +131,14 @@ export default async function PublicEventsPage({
                           ) : (
                             <span>あと{event.capacity - event.registrationCount}名</span>
                           )}
+                        </div>
+                      )}
+
+                      {/* 申し込み期限バッジ */}
+                      {isDeadlineExpired && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-red-400 flex-shrink-0" />
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">申し込み終了</span>
                         </div>
                       )}
                     </div>

@@ -3,7 +3,7 @@ import { getPublicEvent } from "@/lib/db/queries/events";
 import { surveys, surveyQuestions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, MapPin, Globe, Users, AlertCircle } from "lucide-react";
+import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock } from "lucide-react";
 import EventRegistrationForm from "./EventRegistrationForm";
 
 export default async function PublicEventPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -27,6 +27,9 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
   }
 
   const isFull = event.capacity != null && event.registrationCount >= event.capacity;
+  const isDeadlineExpired = event.registrationDeadline
+    ? new Date(event.registrationDeadline) < new Date()
+    : false;
 
   // 申し込みアンケート（registration カテゴリ）の存在チェック
   const registrationSurvey = await db.query.surveys.findFirst({
@@ -116,6 +119,19 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
                   )}
                 </div>
               )}
+
+              {/* 申し込み期限 */}
+              {event.registrationDeadline && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span>
+                    申し込み期限: {formatDateTime(event.registrationDeadline)}
+                  </span>
+                  {isDeadlineExpired && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">期限切れ</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 説明 */}
@@ -140,21 +156,31 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
           </div>
         )}
 
-        {/* 申し込みフォーム */}
-        <EventRegistrationForm
-          eventId={event.id}
-          isFull={isFull}
-          surveyId={registrationSurvey?.id ?? null}
-          organizationId={event.organizationId}
-          questions={questions.map((q) => ({
-            id: q.id,
-            question_type: q.questionType,
-            title: q.title,
-            description: q.description ?? null,
-            is_required: q.isRequired,
-            options: Array.isArray(q.options) ? (q.options as string[]) : null,
-          }))}
-        />
+        {/* 申し込みフォーム or 申し込み終了メッセージ */}
+        {isDeadlineExpired ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">申し込み終了</h3>
+            <p className="text-sm text-gray-500">このイベントの申し込み期限は終了しました</p>
+          </div>
+        ) : (
+          <EventRegistrationForm
+            eventId={event.id}
+            isFull={isFull}
+            surveyId={registrationSurvey?.id ?? null}
+            organizationId={event.organizationId}
+            questions={questions.map((q) => ({
+              id: q.id,
+              question_type: q.questionType,
+              title: q.title,
+              description: q.description ?? null,
+              is_required: q.isRequired,
+              options: Array.isArray(q.options) ? (q.options as string[]) : null,
+            }))}
+          />
+        )}
       </div>
     </div>
   );

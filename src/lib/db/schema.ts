@@ -112,6 +112,7 @@ export const events = sqliteTable("events", {
   capacity: integer("capacity"),
   showRemainingCapacity: integer("show_remaining_capacity").notNull().default(0),
   participationRequirements: text("participation_requirements"),
+  registrationDeadline: text("registration_deadline"),
   registrationCount: integer("registration_count").notNull().default(0),
   visibility: text("visibility").notNull().default("draft"),
   thumbnailUrl: text("thumbnail_url"),
@@ -275,6 +276,7 @@ export const emailCampaigns = sqliteTable("email_campaigns", {
   previewText: text("preview_text"),
   bodyHtml: text("body_html").notNull(),
   bodyText: text("body_text"),
+  format: text("format").notNull().default("html"),
   status: text("status").notNull().default("draft"),
   targetType: text("target_type").notNull().default("all"),
   targetTagIds: text("target_tag_ids", { mode: "json" }).$type<string[] | null>(),
@@ -441,6 +443,22 @@ export const invitations = sqliteTable("invitations", {
 ]);
 
 // =============================================
+// BANNERS (バナー)
+// =============================================
+export const banners = sqliteTable("banners", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  imageUrl: text("image_url").notNull(),
+  linkUrl: text("link_url").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_banners_org").on(table.organizationId),
+]);
+
+// =============================================
 // ADMIN_USERS (SaaS管理者)
 // =============================================
 export const adminUsers = sqliteTable("admin_users", {
@@ -469,6 +487,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   billingHistory: many(billingHistory),
   invitations: many(invitations),
   usageLogs: many(usageLogs),
+  banners: many(banners),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -572,4 +591,8 @@ export const stepCampaignEnrollmentsRelations = relations(stepCampaignEnrollment
   stepCampaign: one(stepCampaigns, { fields: [stepCampaignEnrollments.stepCampaignId], references: [stepCampaigns.id] }),
   customer: one(customers, { fields: [stepCampaignEnrollments.customerId], references: [customers.id] }),
   organization: one(organizations, { fields: [stepCampaignEnrollments.organizationId], references: [organizations.id] }),
+}));
+
+export const bannersRelations = relations(banners, ({ one }) => ({
+  organization: one(organizations, { fields: [banners.organizationId], references: [organizations.id] }),
 }));
