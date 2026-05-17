@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Plus, Trash2, Image as ImageIcon, ExternalLink } from "lucide-react";
-import { getBannersData, addBanner, toggleBanner, removeBanner } from "./actions";
+import { Loader2, Plus, Trash2, Image as ImageIcon, ExternalLink, Pencil } from "lucide-react";
+import { getBannersData, addBanner, editBanner, toggleBanner, removeBanner } from "./actions";
 
 interface BannerItem {
   id: string;
@@ -18,6 +18,7 @@ export default function BannersSettingsPage() {
   const [banners, setBanners] = useState<BannerItem[]>([]);
   const [adding, setAdding] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<BannerItem | null>(null);
   const [form, setForm] = useState({ title: "", linkUrl: "" });
   const [imageKey, setImageKey] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -83,6 +84,48 @@ export default function BannersSettingsPage() {
       await fetchBanners();
     }
     setAdding(false);
+  };
+
+  const handleEditStart = (banner: BannerItem) => {
+    setEditingBanner(banner);
+    setForm({ title: banner.title, linkUrl: banner.linkUrl });
+    setImageKey("");
+    setShowForm(false);
+    setError("");
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBanner) return;
+    setAdding(true);
+    setError("");
+
+    const updateData: { title?: string; linkUrl?: string; imageUrl?: string } = {
+      title: form.title,
+      linkUrl: form.linkUrl,
+    };
+    if (imageKey) {
+      updateData.imageUrl = `/api/images/${imageKey}`;
+    }
+
+    const result = await editBanner(editingBanner.id, updateData);
+
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setEditingBanner(null);
+      setForm({ title: "", linkUrl: "" });
+      setImageKey("");
+      await fetchBanners();
+    }
+    setAdding(false);
+  };
+
+  const handleEditCancel = () => {
+    setEditingBanner(null);
+    setForm({ title: "", linkUrl: "" });
+    setImageKey("");
+    setError("");
   };
 
   const handleToggle = async (id: string, current: boolean) => {
@@ -226,6 +269,113 @@ export default function BannersSettingsPage() {
         </form>
       )}
 
+      {/* 編集フォーム */}
+      {editingBanner && (
+        <form onSubmit={handleEditSubmit} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+          <h2 className="font-semibold text-gray-900">バナーを編集</h2>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              タイトル <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="バナーのタイトル"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              リンクURL <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              value={form.linkUrl}
+              onChange={(e) => setForm({ ...form, linkUrl: e.target.value })}
+              required
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              バナー画像（変更する場合のみ選択）
+            </label>
+            {imageKey ? (
+              <div className="relative w-48 aspect-square border border-gray-200 rounded-lg overflow-hidden">
+                <img
+                  src={`/api/images/${imageKey}`}
+                  alt="プレビュー"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setImageKey(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="w-48 aspect-square border border-gray-200 rounded-lg overflow-hidden">
+                  <img
+                    src={editingBanner.imageUrl}
+                    alt="現在の画像"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors text-sm"
+                  >
+                    {uploading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                    {uploading ? "アップロード中..." : "画像を変更"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={adding}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+            >
+              {adding && <Loader2 className="w-4 h-4 animate-spin" />}
+              更新する
+            </button>
+            <button
+              type="button"
+              onClick={handleEditCancel}
+              className="px-6 py-3 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-sm"
+            >
+              キャンセル
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* バナー一覧 */}
       {banners.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
@@ -267,6 +417,12 @@ export default function BannersSettingsPage() {
 
               {/* 操作 */}
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleEditStart(banner)}
+                  className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => handleToggle(banner.id, banner.isActive)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${

@@ -79,6 +79,23 @@ export async function toggleBanner(bannerId: string, isActive: boolean) {
   }
 }
 
+export async function editBanner(
+  bannerId: string,
+  data: { title?: string; linkUrl?: string; imageUrl?: string }
+) {
+  const result = await getSessionAndOrg();
+  if ("error" in result) return { error: result.error };
+
+  try {
+    await updateBanner(result.db, result.orgId, bannerId, data);
+    revalidatePath("/settings/banners");
+    revalidatePath("/events/public");
+    return { success: true };
+  } catch {
+    return { error: "バナーの更新に失敗しました" };
+  }
+}
+
 export async function removeBanner(bannerId: string) {
   const result = await getSessionAndOrg();
   if ("error" in result) return { error: result.error };
