@@ -46,6 +46,8 @@ export async function updateSurvey(surveyId: string, data: {
       status: data.status,
       publishedAt: data.status === 'active' ? new Date().toISOString() : null,
       deadline: data.deadline ?? null,
+      paymentEnabled: data.payment_enabled ?? false,
+      paymentAmount: data.payment_amount ?? 0,
     })
 
     // 既存の設問を削除して再挿入

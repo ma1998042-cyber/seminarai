@@ -61,6 +61,8 @@ export async function updateSurvey(
     publishedAt: string | null;
     closedAt: string | null;
     deadline: number | null;
+    paymentEnabled: boolean;
+    paymentAmount: number | null;
   }>,
 ) {
   const [survey] = await db
