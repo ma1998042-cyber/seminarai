@@ -5,6 +5,43 @@ import { eq, and } from "drizzle-orm";
 import { sendEmail } from "@/lib/email";
 
 /**
+ * プレースホルダを実際の値に置換する
+ */
+function replacePlaceholders(
+  template: string,
+  vars: {
+    recipientName: string;
+    eventTitle: string;
+    formattedDate: string;
+    locationText: string;
+    matchedDay: number;
+  },
+): string {
+  return template
+    .replace(/\{\{参加者名\}\}/g, vars.recipientName)
+    .replace(/\{\{イベント名\}\}/g, vars.eventTitle)
+    .replace(/\{\{開催日時\}\}/g, vars.formattedDate)
+    .replace(/\{\{場所\}\}/g, vars.locationText)
+    .replace(/\{\{残り日数\}\}/g, String(vars.matchedDay));
+}
+
+/**
+ * プレーンテキストをHTMLメール本文にラップする
+ */
+function wrapTextInHtml(text: string): string {
+  const htmlBody = text.replace(/\n/g, "<br>");
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  ${htmlBody}
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+  <p style="font-size: 12px; color: #9ca3af;">このメールはイベント管理システムから自動送信されています。</p>
+</body>
+</html>`;
+}
+
+/**
  * イベントリマインドメール送信 cron エンドポイント
  * 毎日1回実行し、reminderEnabled=1 のイベントで
  * startDate が reminderDays で指定された日数後のものを検索して
@@ -95,7 +132,26 @@ export async function GET(request: NextRequest) {
 
         const recipientName = reg.fullName || "参加者";
 
-        const htmlContent = `
+        const placeholderVars = {
+          recipientName,
+          eventTitle: event.title,
+          formattedDate,
+          locationText,
+          matchedDay,
+        };
+
+        // 件名: カスタムテンプレートがあればプレースホルダ置換、なければデフォルト
+        const subject = event.reminderSubject
+          ? replacePlaceholders(event.reminderSubject, placeholderVars)
+          : `【リマインド】${event.title} 開催まであと${matchedDay}日`;
+
+        // 本文: カスタムテンプレートがあればプレースホルダ置換+HTMLラップ、なければデフォルト
+        let htmlContent: string;
+        if (event.reminderBody) {
+          const replacedBody = replacePlaceholders(event.reminderBody, placeholderVars);
+          htmlContent = wrapTextInHtml(replacedBody);
+        } else {
+          htmlContent = `
 <!DOCTYPE html>
 <html lang="ja">
 <head><meta charset="UTF-8"></head>
@@ -122,11 +178,12 @@ export async function GET(request: NextRequest) {
   <p style="font-size: 12px; color: #9ca3af;">このメールはイベント管理システムから自動送信されています。</p>
 </body>
 </html>`.trim();
+        }
 
         try {
           await sendEmail(
             reg.email,
-            `【リマインド】${event.title} 開催まであと${matchedDay}日`,
+            subject,
             htmlContent,
             "html",
           );
