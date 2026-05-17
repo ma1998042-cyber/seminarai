@@ -159,7 +159,7 @@ export default async function PublicEventsPage({
 
           {/* 右サイドバー: バナー */}
           {banners.length > 0 && (
-            <aside className="hidden lg:block w-64 flex-shrink-0 space-y-4">
+            <aside className="hidden lg:block w-64 flex-shrink-0 sticky top-12 self-start space-y-4">
               {banners.map((banner) => (
                 <a
                   key={banner.id}
