@@ -6,6 +6,7 @@ import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getSurveyById, getSurveyResponses } from "@/lib/db/queries/surveys";
+import { getTags } from "@/lib/db/queries/tags";
 import ResponsesFilterTable from "./ResponsesFilterTable";
 
 export default async function SurveyResponsesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +25,7 @@ export default async function SurveyResponsesPage({ params }: { params: Promise<
   if (profile?.currentOrganizationId !== survey.organizationId) redirect("/surveys");
 
   const responses = await getSurveyResponses(db, survey.id);
+  const orgTags = await getTags(db, profile.currentOrganizationId!);
 
   const questions = (survey.questions ?? []).map((q) => ({
     id: q.id,
@@ -56,8 +58,10 @@ export default async function SurveyResponsesPage({ params }: { params: Promise<
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <ResponsesFilterTable
           surveyId={survey.id}
+          organizationId={survey.organizationId}
           questions={questions}
           responses={serializedResponses}
+          tags={orgTags.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
         />
       </div>
     </div>
