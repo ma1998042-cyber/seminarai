@@ -236,6 +236,7 @@ export const surveys = sqliteTable("surveys", {
   settings: text("settings", { mode: "json" }).notNull().$type<Record<string, unknown>>().default({}),
   completionEmailSubject: text("completion_email_subject"),
   completionEmailBody: text("completion_email_body"),
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
   paymentEnabled: integer("payment_enabled", { mode: "boolean" }).notNull().default(false),
   paymentAmount: integer("payment_amount"),
   responseCount: integer("response_count").notNull().default(0),

@@ -32,9 +32,15 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
   });
   const hasRegistrationSurvey = !!registrationSurvey;
 
+  // イベントに紐づくアンケート一覧を取得
+  const eventSurveys = await db.query.surveys.findMany({
+    where: eq(surveys.eventId, event.id),
+  });
+
   return (
     <EventEditForm
       hasRegistrationSurvey={hasRegistrationSurvey}
+      eventSurveys={eventSurveys.map(s => ({ id: s.id, title: s.title, category: s.category, isPublic: s.isPublic }))}
       event={{
         id: event.id,
         title: event.title,

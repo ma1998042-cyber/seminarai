@@ -5,6 +5,8 @@ import { getAuth } from '@/lib/auth'
 import { getDbFromContext } from '@/lib/db'
 import { getUserProfile } from '@/lib/db/queries/users'
 import { updateEvent } from '@/lib/db/queries/events'
+import { surveys } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 export async function updateEventAction(eventId: string, form: {
@@ -65,5 +67,29 @@ export async function updateEventAction(eventId: string, form: {
 
   revalidatePath('/events')
   revalidatePath(`/events/${eventId}`)
+  return {}
+}
+
+export async function updateSurveyPublicAction(surveyId: string, isPublic: boolean): Promise<{ error?: string }> {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
+  if (!user) return { error: 'ログインが必要です' }
+
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  if (!profile?.currentOrganizationId) return { error: '組織が見つかりません' }
+
+  // アンケートが自組織のものか確認
+  const survey = await db.query.surveys.findFirst({
+    where: eq(surveys.id, surveyId),
+  })
+  if (!survey || survey.organizationId !== profile.currentOrganizationId) {
+    return { error: 'アンケートが見つかりません' }
+  }
+
+  await db.update(surveys).set({ isPublic }).where(eq(surveys.id, surveyId))
+
+  revalidatePath('/events')
   return {}
 }

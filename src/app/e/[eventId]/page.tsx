@@ -31,11 +31,11 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
     ? new Date(event.registrationDeadline) < new Date()
     : false;
 
-  // 申し込みアンケート（registration カテゴリ）の存在チェック
+  // 公開設定されたアンケートを取得
   const registrationSurvey = await db.query.surveys.findFirst({
     where: and(
       eq(surveys.eventId, event.id),
-      eq(surveys.category, "registration"),
+      eq(surveys.isPublic, true),
     ),
   });
 

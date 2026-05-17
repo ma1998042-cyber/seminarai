@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Save, ImagePlus, X, AlertTriangle, Bell } from "lucide-react";
-import { updateEventAction } from "./actions";
+import { updateEventAction, updateSurveyPublicAction } from "./actions";
 
 const MAX_IMAGES = 3;
 
@@ -38,7 +38,14 @@ type EventData = {
   reminderDays: string;
 };
 
-export default function EventEditForm({ event, hasRegistrationSurvey }: { event: EventData; hasRegistrationSurvey: boolean }) {
+type SurveyItem = {
+  id: string;
+  title: string;
+  category: string;
+  isPublic: boolean;
+};
+
+export default function EventEditForm({ event, hasRegistrationSurvey, eventSurveys }: { event: EventData; hasRegistrationSurvey: boolean; eventSurveys: SurveyItem[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -516,6 +523,21 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
           )}
         </div>
 
+        {/* アンケート公開設定 */}
+        {eventSurveys.length > 0 && (
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="py-3 px-4">
+              <p className="text-sm font-medium text-gray-700">公開ページに表示するアンケート</p>
+              <p className="text-xs text-gray-400 mt-0.5">公開ページで表示するアンケートを選択します</p>
+            </div>
+            <div className="px-4 pb-4 space-y-2">
+              {eventSurveys.map((survey) => (
+                <SurveyPublicToggle key={survey.id} survey={survey} />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3 pt-2">
           <Link
             href={`/events/${event.id}`}
@@ -534,6 +556,49 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function SurveyPublicToggle({ survey }: { survey: SurveyItem }) {
+  const [isPublic, setIsPublic] = useState(survey.isPublic);
+  const [updating, setUpdating] = useState(false);
+
+  const handleToggle = async () => {
+    const newValue = !isPublic;
+    setIsPublic(newValue);
+    setUpdating(true);
+    try {
+      await updateSurveyPublicAction(survey.id, newValue);
+    } catch {
+      setIsPublic(!newValue);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2 px-3 border border-gray-100 rounded-lg">
+      <div>
+        <p className="text-sm text-gray-700">{survey.title}</p>
+        <p className="text-xs text-gray-400">{survey.category}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isPublic}
+        disabled={updating}
+        onClick={handleToggle}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          isPublic ? "bg-indigo-600" : "bg-gray-200"
+        } ${updating ? "opacity-50" : ""}`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            isPublic ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
     </div>
   );
 }
