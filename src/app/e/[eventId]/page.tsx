@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
 import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock, ArrowLeft } from "lucide-react";
 import EventRegistrationForm from "./EventRegistrationForm";
+import ImageCarousel from "./ImageCarousel";
 
 export default async function PublicEventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -76,15 +77,7 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
                 </div>
               );
             }
-            return (
-              <div className="space-y-1">
-                {images.map((url, i) => (
-                  <div key={i} className="w-full bg-gray-100 flex justify-center">
-                    <img src={url} alt={`${event.title} ${i + 1}`} className="w-full h-auto max-h-[80vh]" style={{ objectFit: "contain" }} />
-                  </div>
-                ))}
-              </div>
-            );
+            return <ImageCarousel images={images} title={event.title} />;
           })()}
           <div className="p-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">{event.title}</h1>
