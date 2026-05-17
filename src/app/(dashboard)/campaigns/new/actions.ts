@@ -31,9 +31,11 @@ export async function createCampaignAction(form: {
   subject: string
   preview_text: string
   body_html: string
+  format: 'html' | 'text'
   target_type: string
   target_tag_ids: string[]
   target_survey_id: string
+  target_customer_ids: string[]
   scheduled_at: string
   status: 'draft' | 'scheduled'
 }): Promise<{ campaignId?: string; error?: string }> {
@@ -52,9 +54,11 @@ export async function createCampaignAction(form: {
     subject: form.subject,
     previewText: form.preview_text || undefined,
     bodyHtml: form.body_html,
+    format: form.format || 'html',
     targetType: form.target_type,
     targetTagIds: form.target_tag_ids.length > 0 ? form.target_tag_ids : null,
     targetSurveyId: form.target_survey_id || null,
+    targetCustomerIds: form.target_customer_ids.length > 0 ? form.target_customer_ids : null,
     status: form.status,
     scheduledAt: form.scheduled_at || undefined,
     createdBy: user.id,
@@ -71,9 +75,11 @@ export async function sendNowAction(form: {
   subject: string
   preview_text: string
   body_html: string
+  format: 'html' | 'text'
   target_type: string
   target_tag_ids: string[]
   target_survey_id: string
+  target_customer_ids: string[]
 }): Promise<{ campaignId?: string; error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -91,9 +97,11 @@ export async function sendNowAction(form: {
     subject: form.subject,
     previewText: form.preview_text || undefined,
     bodyHtml: form.body_html,
+    format: form.format || 'html',
     targetType: form.target_type,
     targetTagIds: form.target_tag_ids.length > 0 ? form.target_tag_ids : null,
     targetSurveyId: form.target_survey_id || null,
+    targetCustomerIds: form.target_customer_ids.length > 0 ? form.target_customer_ids : null,
     status: 'sending',
     createdBy: user.id,
   })
@@ -139,6 +147,7 @@ export async function getCustomersByTarget(
   targetType: string,
   tagIds: string[],
   surveyId?: string,
+  customerIds?: string[],
 ): Promise<{
   customers: { id: string; fullName: string | null; email: string; tags: { name: string; color: string }[] }[]
   total: number
@@ -153,6 +162,33 @@ export async function getCustomersByTarget(
   if (!profile?.currentOrganizationId) return { customers: [], total: 0 }
 
   const orgId = profile.currentOrganizationId
+
+  if (targetType === 'specific_customers' && customerIds && customerIds.length > 0) {
+    const total = customerIds.length
+    const limitedIds = customerIds.slice(0, 50)
+
+    const results = await db.query.customers.findMany({
+      where: and(
+        eq(customers.organizationId, orgId),
+        inArray(customers.id, limitedIds),
+      ),
+      with: {
+        customerTags: {
+          with: { tag: true },
+        },
+      },
+    })
+
+    return {
+      customers: results.map(c => ({
+        id: c.id,
+        fullName: c.fullName,
+        email: c.email,
+        tags: (c.customerTags ?? []).map((ct: any) => ({ name: ct.tag.name, color: ct.tag.color })),
+      })),
+      total,
+    }
+  }
 
   if (targetType === 'survey_respondents' && surveyId) {
     // アンケート回答者: respondentEmail から顧客を検索

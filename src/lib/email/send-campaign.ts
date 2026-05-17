@@ -49,6 +49,7 @@ export async function sendCampaignEmails(
     campaign.targetType,
     campaign.targetTagIds ?? [],
     campaign.targetSurveyId ?? undefined,
+    campaign.targetCustomerIds ?? undefined,
   );
 
   if (recipients.length === 0) {
@@ -94,11 +95,17 @@ export async function sendCampaignEmails(
 
       const sendId = sendRecord[0].id;
 
-      // トラッキング付きHTMLを生成
-      let trackedHtml = addTrackingPixel(campaign.bodyHtml, sendId, baseUrl);
-      trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl);
+      const campaignFormat = campaign.format === "text" ? "text" : "html";
 
-      await sendEmail(recipient.email, campaign.subject, trackedHtml);
+      if (campaignFormat === "text") {
+        // テキスト形式: トラッキングなしでプレーンテキスト送信
+        await sendEmail(recipient.email, campaign.subject, campaign.bodyHtml, "text");
+      } else {
+        // HTML形式: トラッキング付きHTMLを生成
+        let trackedHtml = addTrackingPixel(campaign.bodyHtml, sendId, baseUrl);
+        trackedHtml = rewriteLinks(trackedHtml, sendId, baseUrl);
+        await sendEmail(recipient.email, campaign.subject, trackedHtml, "html");
+      }
 
       await db
         .update(emailSends)
@@ -163,7 +170,21 @@ async function resolveTargetEmails(
   targetType: string,
   tagIds: string[],
   surveyId?: string,
+  customerIds?: string[],
 ): Promise<{ email: string; customerId: string | null }[]> {
+  if (targetType === "specific_customers" && customerIds && customerIds.length > 0) {
+    const results = await db.query.customers.findMany({
+      where: and(
+        eq(customers.organizationId, orgId),
+        inArray(customers.id, customerIds),
+        eq(customers.emailOptIn, true),
+      ),
+      columns: { id: true, email: true },
+    });
+
+    return results.map((c: any) => ({ email: c.email, customerId: c.id }));
+  }
+
   if (targetType === "survey_respondents" && surveyId) {
     const responses = await db
       .select({

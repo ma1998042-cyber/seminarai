@@ -15,15 +15,29 @@ function getBrevoApiKey(): string {
  * メールを送信する
  * @param to 宛先メールアドレス（文字列または配列）
  * @param subject 件名
- * @param html HTML本文
+ * @param content メール本文（HTMLまたはプレーンテキスト）
+ * @param format 送信形式（'html' | 'text'）デフォルトは 'html'
  */
 export async function sendEmail(
   to: string | string[],
   subject: string,
-  html: string
+  content: string,
+  format: "html" | "text" = "html"
 ) {
   const apiKey = getBrevoApiKey();
   const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({ email }));
+
+  const bodyPayload: Record<string, unknown> = {
+    sender: { name: "sk-techlab", email: "foritemaqua@gmail.com" },
+    to: recipients,
+    subject,
+  };
+
+  if (format === "text") {
+    bodyPayload.textContent = content;
+  } else {
+    bodyPayload.htmlContent = content;
+  }
 
   const res = await fetch(BREVO_API_URL, {
     method: "POST",
@@ -32,12 +46,7 @@ export async function sendEmail(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({
-      sender: { name: "sk-techlab", email: "foritemaqua@gmail.com" },
-      to: recipients,
-      subject,
-      htmlContent: html,
-    }),
+    body: JSON.stringify(bodyPayload),
   });
 
   if (!res.ok) {

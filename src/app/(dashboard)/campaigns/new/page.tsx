@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList, FileText, UserCheck } from "lucide-react";
 import { VariableInsertButton } from "@/components/campaigns/VariableInsertButton";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getTagsForOrg, getSurveysForOrg, createCampaignAction, sendNowAction, getCustomersByTarget, getTemplatesForOrg } from "./actions";
@@ -33,9 +33,11 @@ export default function NewCampaignPage() {
     subject: "",
     preview_text: "",
     body_html: "",
+    format: "html" as "html" | "text",
     target_type: "all",
     target_tag_ids: [] as string[],
     target_survey_id: "",
+    target_customer_ids: [] as string[],
     scheduled_at: "",
   });
 
@@ -64,6 +66,20 @@ export default function NewCampaignPage() {
           }));
         }
       }
+
+      // クエリパラメータで特定顧客が指定されている場合、プリフィル
+      const targetType = searchParams.get("targetType");
+      const customerIds = searchParams.get("customerIds");
+      if (targetType === "specific_customers" && customerIds) {
+        const ids = customerIds.split(",").filter(Boolean);
+        if (ids.length > 0) {
+          setForm((prev) => ({
+            ...prev,
+            target_type: "specific_customers",
+            target_customer_ids: ids,
+          }));
+        }
+      }
     };
     fetchData();
   }, [searchParams]);
@@ -80,9 +96,14 @@ export default function NewCampaignPage() {
         setPreviewTotal(0);
         return;
       }
+      if (form.target_type === "specific_customers" && form.target_customer_ids.length === 0) {
+        setPreviewCustomers([]);
+        setPreviewTotal(0);
+        return;
+      }
       setPreviewLoading(true);
       try {
-        const result = await getCustomersByTarget(form.target_type, form.target_tag_ids, form.target_survey_id);
+        const result = await getCustomersByTarget(form.target_type, form.target_tag_ids, form.target_survey_id, form.target_customer_ids);
         setPreviewCustomers(result.customers);
         setPreviewTotal(result.total);
       } catch {
@@ -93,7 +114,7 @@ export default function NewCampaignPage() {
       }
     };
     fetchPreview();
-  }, [form.target_type, form.target_tag_ids, form.target_survey_id]);
+  }, [form.target_type, form.target_tag_ids, form.target_survey_id, form.target_customer_ids]);
 
   const toggleTagSelection = (tagId: string) => {
     setForm((prev) => ({
@@ -252,11 +273,39 @@ export default function NewCampaignPage() {
 
         {/* Email body */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">メール本文</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">メール本文</h2>
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, format: "html" })}
+                className={cn(
+                  "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
+                  form.format === "html"
+                    ? "bg-white text-indigo-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                HTML
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, format: "text" })}
+                className={cn(
+                  "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
+                  form.format === "text"
+                    ? "bg-white text-indigo-700 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                テキスト
+              </button>
+            </div>
+          </div>
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                本文（HTML） <span className="text-red-500">*</span>
+                本文（{form.format === "html" ? "HTML" : "テキスト"}） <span className="text-red-500">*</span>
               </label>
               <VariableInsertButton
                 textareaRef={bodyTextareaRef}
@@ -268,21 +317,33 @@ export default function NewCampaignPage() {
               value={form.body_html}
               onChange={(e) => setForm({ ...form, body_html: e.target.value })}
               rows={12}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm resize-none"
-              placeholder={`<h1>こんにちは！</h1>\n<p>先日はセミナーにご参加いただきありがとうございました。</p>\n<p>...</p>`}
+              className={cn(
+                "w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm resize-none",
+                form.format === "html" ? "font-mono" : ""
+              )}
+              placeholder={
+                form.format === "html"
+                  ? `<h1>こんにちは！</h1>\n<p>先日はセミナーにご参加いただきありがとうございました。</p>\n<p>...</p>`
+                  : `こんにちは！\n\n先日はセミナーにご参加いただきありがとうございました。\n\n...`
+              }
             />
-            <p className="text-xs text-gray-400 mt-1">HTMLまたはテキストで本文を入力してください。差し込み変数が使えます。</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {form.format === "html"
+                ? "HTMLで本文を入力してください。差し込み変数が使えます。"
+                : "プレーンテキストで本文を入力してください。差し込み変数が使えます。"}
+            </p>
           </div>
         </div>
 
         {/* Target audience */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">配信対象</h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { value: "all", label: "全顧客", icon: <Users className="w-4 h-4" />, desc: "全員に配信" },
               { value: "tag", label: "タグ指定", icon: <Tag className="w-4 h-4" />, desc: "タグで絞り込み" },
               { value: "survey_respondents", label: "アンケート回答者", icon: <ClipboardList className="w-4 h-4" />, desc: "回答者に配信" },
+              { value: "specific_customers", label: "個別指定", icon: <UserCheck className="w-4 h-4" />, desc: "選択した顧客に配信" },
             ].map((option) => (
               <button
                 key={option.value}
@@ -353,7 +414,7 @@ export default function NewCampaignPage() {
           )}
 
           {/* 顧客プレビュー */}
-          {(form.target_type === "all" || (form.target_type === "tag" && form.target_tag_ids.length > 0) || (form.target_type === "survey_respondents" && form.target_survey_id)) && (
+          {(form.target_type === "all" || (form.target_type === "tag" && form.target_tag_ids.length > 0) || (form.target_type === "survey_respondents" && form.target_survey_id) || (form.target_type === "specific_customers" && form.target_customer_ids.length > 0)) && (
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
