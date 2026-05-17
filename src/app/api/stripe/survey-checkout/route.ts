@@ -3,7 +3,10 @@ import Stripe from 'stripe'
 import { getDbFromContext } from '@/lib/db'
 import { getSurveyById, createSurveyResponse, updateSurveyResponse } from '@/lib/db/queries'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-04-10' })
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-04-10',
+  httpClient: Stripe.createFetchHttpClient(),
+})
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,6 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url })
   } catch (err) {
     console.error('Stripe checkout error:', err)
-    return NextResponse.json({ error: '決済の開始に失敗しました' }, { status: 500 })
+    const message = err instanceof Error ? err.message : '不明なエラー'
+    return NextResponse.json({ error: `決済の開始に失敗しました: ${message}` }, { status: 500 })
   }
 }

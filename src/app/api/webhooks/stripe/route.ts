@@ -8,6 +8,7 @@ import { upsertSubscription, cancelSubscription, createBillingRecord } from "@/l
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-04-10" as any,
+  httpClient: Stripe.createFetchHttpClient(),
 });
 
 export async function POST(request: NextRequest) {

@@ -3,7 +3,10 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { getDbFromContext } from "@/lib/db";
 import { getSurveyById, incrementSurveyResponseCount } from "@/lib/db/queries/surveys";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-04-10",
+  httpClient: Stripe.createFetchHttpClient(),
+});
 
 export default async function SurveyCompletePage({
   params,
