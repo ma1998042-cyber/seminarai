@@ -97,6 +97,8 @@ export async function updateEvent(
     showRemainingCapacity: number;
     participationRequirements: string | null;
     registrationDeadline: string | null;
+    reminderEnabled: number;
+    reminderDays: string;
   }>,
 ) {
   const [event] = await db

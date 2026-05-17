@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Save, ImagePlus, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Save, ImagePlus, X, AlertTriangle, Bell } from "lucide-react";
 import { updateEventAction } from "./actions";
 
 const MAX_IMAGES = 3;
@@ -34,6 +34,8 @@ type EventData = {
   showRemainingCapacity: number;
   participationRequirements: string | null;
   registrationDeadline: string | null;
+  reminderEnabled: number;
+  reminderDays: string;
 };
 
 export default function EventEditForm({ event, hasRegistrationSurvey }: { event: EventData; hasRegistrationSurvey: boolean }) {
@@ -65,7 +67,17 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
     show_remaining_capacity: event.showRemainingCapacity === 1,
     participation_requirements: event.participationRequirements || "",
     registration_deadline: event.registrationDeadline || "",
+    reminder_enabled: event.reminderEnabled === 1,
+    reminder_days: (() => {
+      try {
+        return JSON.parse(event.reminderDays || '[1,3]') as number[];
+      } catch {
+        return [1, 3];
+      }
+    })(),
   });
+
+  const [reminderDayInput, setReminderDayInput] = useState("");
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,6 +122,8 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
       show_remaining_capacity: form.show_remaining_capacity,
       participation_requirements: form.participation_requirements,
       registration_deadline: form.registration_deadline,
+      reminder_enabled: form.reminder_enabled,
+      reminder_days: form.reminder_days,
     });
 
     if (result.error) {
@@ -404,6 +418,100 @@ export default function EventEditForm({ event, hasRegistrationSurvey }: { event:
             <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
               <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>申し込みアンケート（registration）が未設定のため、公開ページで申し込みフォームが表示されません。</span>
+            </div>
+          )}
+        </div>
+
+        {/* リマインドメール設定 */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between py-3 px-4">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-700">リマインドメール</p>
+                <p className="text-xs text-gray-400 mt-0.5">イベント開催前に参加者へ自動でリマインドメールを送信します</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.reminder_enabled}
+              onClick={() => setForm({ ...form, reminder_enabled: !form.reminder_enabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                form.reminder_enabled ? "bg-indigo-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  form.reminder_enabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+          {form.reminder_enabled && (
+            <div className="px-4 pb-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">送信タイミング（開催日の何日前）</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {form.reminder_days
+                    .sort((a, b) => a - b)
+                    .map((day) => (
+                      <span
+                        key={day}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 text-indigo-700 text-sm rounded-full"
+                      >
+                        {day}日前
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              reminder_days: form.reminder_days.filter((d) => d !== day),
+                            })
+                          }
+                          className="ml-0.5 hover:text-indigo-900"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="90"
+                    value={reminderDayInput}
+                    onChange={(e) => setReminderDayInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const val = parseInt(reminderDayInput);
+                        if (val > 0 && val <= 90 && !form.reminder_days.includes(val)) {
+                          setForm({ ...form, reminder_days: [...form.reminder_days, val] });
+                          setReminderDayInput("");
+                        }
+                      }
+                    }}
+                    placeholder="日数を入力"
+                    className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = parseInt(reminderDayInput);
+                      if (val > 0 && val <= 90 && !form.reminder_days.includes(val)) {
+                        setForm({ ...form, reminder_days: [...form.reminder_days, val] });
+                        setReminderDayInput("");
+                      }
+                    }}
+                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    追加
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">1〜90日前まで設定できます</p>
+              </div>
             </div>
           )}
         </div>

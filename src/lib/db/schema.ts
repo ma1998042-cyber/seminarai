@@ -117,6 +117,8 @@ export const events = sqliteTable("events", {
   visibility: text("visibility").notNull().default("draft"),
   thumbnailUrl: text("thumbnail_url"),
   imageUrls: text("image_urls", { mode: "json" }).$type<string[]>().default([]),
+  reminderEnabled: integer("reminder_enabled").notNull().default(0),
+  reminderDays: text("reminder_days").notNull().default('[1,3]'),
   tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
   customFields: text("custom_fields", { mode: "json" }).notNull().$type<unknown[]>().default([]),
   settings: text("settings", { mode: "json" }).notNull().$type<Record<string, unknown>>().default({}),
@@ -127,6 +129,21 @@ export const events = sqliteTable("events", {
   index("idx_events_org").on(table.organizationId),
   index("idx_events_status").on(table.organizationId, table.status),
   index("idx_events_visibility").on(table.organizationId, table.visibility),
+]);
+
+// =============================================
+// CUSTOMER_STATUSES (顧客ステータス/習熟度)
+// =============================================
+export const customerStatuses = sqliteTable("customer_statuses", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color").notNull().default("#6366f1"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_customer_statuses_org").on(table.organizationId),
+  uniqueIndex("customer_statuses_org_name_unique").on(table.organizationId, table.name),
 ]);
 
 // =============================================
@@ -142,6 +159,7 @@ export const customers = sqliteTable("customers", {
   jobTitle: text("job_title"),
   notes: text("notes"),
   status: text("status").notNull().default("active"),
+  statusId: text("status_id").references(() => customerStatuses.id),
   source: text("source"),
   sourceEventId: text("source_event_id").references(() => events.id),
   customFields: text("custom_fields", { mode: "json" }).notNull().$type<Record<string, unknown>>().default({}),
@@ -488,6 +506,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   invitations: many(invitations),
   usageLogs: many(usageLogs),
   banners: many(banners),
+  customerStatuses: many(customerStatuses),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -509,9 +528,15 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   surveys: many(surveys),
 }));
 
+export const customerStatusesRelations = relations(customerStatuses, ({ one, many }) => ({
+  organization: one(organizations, { fields: [customerStatuses.organizationId], references: [organizations.id] }),
+  customers: many(customers),
+}));
+
 export const customersRelations = relations(customers, ({ one, many }) => ({
   organization: one(organizations, { fields: [customers.organizationId], references: [organizations.id] }),
   sourceEvent: one(events, { fields: [customers.sourceEventId], references: [events.id] }),
+  customerStatus: one(customerStatuses, { fields: [customers.statusId], references: [customerStatuses.id] }),
   customerTags: many(customerTags),
   eventRegistrations: many(eventRegistrations),
   surveyResponses: many(surveyResponses),

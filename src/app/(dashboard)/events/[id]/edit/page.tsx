@@ -53,6 +53,8 @@ export default async function EventEditPage({ params }: { params: Promise<{ id: 
         showRemainingCapacity: event.showRemainingCapacity,
         participationRequirements: event.participationRequirements,
         registrationDeadline: event.registrationDeadline,
+        reminderEnabled: event.reminderEnabled,
+        reminderDays: event.reminderDays,
       }}
     />
   );
