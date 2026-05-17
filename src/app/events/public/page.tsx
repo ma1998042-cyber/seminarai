@@ -4,9 +4,15 @@ import { getPublicEvents } from "@/lib/db/queries/events";
 import { formatDateTime } from "@/lib/utils";
 import { CalendarDays, MapPin, Globe, Users } from "lucide-react";
 
-export default async function PublicEventsPage() {
+export default async function PublicEventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const params = await searchParams;
+  const monthFilter = params.month === "current" || params.month === "next" ? params.month : undefined;
   const db = getDbFromContext();
-  const events = await getPublicEvents(db);
+  const events = await getPublicEvents(db, { month: monthFilter });
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -15,6 +21,40 @@ export default async function PublicEventsPage() {
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">公開イベント一覧</h1>
           <p className="text-gray-500">参加可能なイベントをご覧ください</p>
+        </div>
+
+        {/* 月別フィルタ */}
+        <div className="flex justify-center gap-2 mb-8">
+          <Link
+            href="/events/public"
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              !monthFilter
+                ? "bg-indigo-600 text-white"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            すべて
+          </Link>
+          <Link
+            href="/events/public?month=current"
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              monthFilter === "current"
+                ? "bg-indigo-600 text-white"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            今月
+          </Link>
+          <Link
+            href="/events/public?month=next"
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              monthFilter === "next"
+                ? "bg-indigo-600 text-white"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            来月
+          </Link>
         </div>
 
         {/* イベント一覧 */}

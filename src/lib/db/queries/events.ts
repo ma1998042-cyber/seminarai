@@ -109,14 +109,41 @@ export async function updateEvent(
 // 公開ページ用クエリ
 // =============================================
 
-export async function getPublicEvents(db: Database) {
+export async function getPublicEvents(
+  db: Database,
+  options?: { month?: "current" | "next" },
+) {
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const conditions = [
+    eq(events.visibility, "public"),
+    eq(events.status, "active"),
+    gte(events.startDate, today),
+  ];
+
+  if (options?.month) {
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth(); // 0-indexed
+
+    if (options.month === "next") {
+      month += 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
+    }
+
+    const startOfMonth = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const nextMonth = month + 1 > 11 ? 0 : month + 1;
+    const nextYear = month + 1 > 11 ? year + 1 : year;
+    const endOfMonth = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-01`;
+
+    conditions.push(gte(events.startDate, startOfMonth));
+    conditions.push(sql`${events.startDate} < ${endOfMonth}`);
+  }
+
   return db.query.events.findMany({
-    where: and(
-      eq(events.visibility, "public"),
-      eq(events.status, "active"),
-      gte(events.startDate, today),
-    ),
+    where: and(...conditions),
     orderBy: [asc(events.startDate)],
   });
 }
