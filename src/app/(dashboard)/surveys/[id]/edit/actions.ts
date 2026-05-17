@@ -9,6 +9,7 @@ import { getUserProfile } from '@/lib/db/queries/users'
 import { emailTemplates } from '@/lib/db/schema'
 import {
   updateSurvey as updateSurveyDb,
+  getSurveyById,
   deleteSurveyQuestions,
   createSurveyQuestions,
 } from '@/lib/db/queries/surveys'
@@ -41,6 +42,19 @@ export async function updateSurvey(surveyId: string, data: {
   if (!user) return { error: 'ログインが必要です' }
 
   const db = getDbFromContext()
+
+  // 自動作成アンケート（pre_event/post_event）のカテゴリ・イベント紐付け変更を拒否
+  const existingSurvey = await getSurveyById(db, surveyId)
+  if (!existingSurvey) return { error: 'アンケートが見つかりません' }
+
+  const isAutoCreated = ['pre_event', 'post_event'].includes(existingSurvey.category ?? '')
+  if (isAutoCreated) {
+    if (data.category && data.category !== existingSurvey.category) {
+      return { error: '自動作成アンケートのカテゴリは変更できません' }
+    }
+    // カテゴリが送信されない場合も既存値を維持
+    data.category = existingSurvey.category ?? undefined
+  }
 
   try {
     await updateSurveyDb(db, surveyId, {

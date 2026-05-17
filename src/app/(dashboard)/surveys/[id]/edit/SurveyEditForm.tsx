@@ -79,6 +79,8 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const isAutoCreated = ["pre_event", "post_event"].includes(initial.category);
+
   const createQuestion = (type: QuestionType): Question => ({
     id: Math.random().toString(36).substr(2, 9),
     question_type: type,
@@ -159,7 +161,11 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            disabled={isAutoCreated}
+            className={cn(
+              "w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white",
+              isAutoCreated && "opacity-60 cursor-not-allowed bg-gray-50"
+            )}
           >
             {Object.entries(SURVEY_CATEGORY_LABELS)
               .filter(([value]) => hasEvent || !["pre_event", "post_event"].includes(value))
@@ -167,9 +173,11 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
                 <option key={value} value={value}>{label}</option>
               ))}
           </select>
-          {!hasEvent && (
+          {isAutoCreated ? (
+            <p className="text-xs text-amber-600 mt-1">自動作成アンケートのため変更できません</p>
+          ) : !hasEvent ? (
             <p className="text-xs text-gray-400 mt-1">事前・事後アンケートはイベントに紐づけると選択できます</p>
-          )}
+          ) : null}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
