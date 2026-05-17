@@ -8,6 +8,8 @@ import { getUserProfile } from "@/lib/db/queries/users";
 import { getPendingInvitationsByEmail } from "@/lib/db/queries/invitations";
 import { events, customers, surveys, emailCampaigns } from "@/lib/db/schema";
 import CreateOrgCard from "./CreateOrgCard";
+import { EmailTrackingChart } from "./EmailTrackingChart";
+import { getDailyEmailTrackingStats } from "@/lib/db/queries/campaigns";
 import {
   CalendarDays,
   Users,
@@ -54,6 +56,9 @@ export default async function DashboardPage() {
   const customersCount = customersResult[0]?.count ?? 0;
   const surveysCount = surveysResult[0]?.count ?? 0;
   const campaignsCount = campaignsResult[0]?.count ?? 0;
+
+  // Email tracking stats (last 7 days)
+  const emailTrackingData = await getDailyEmailTrackingStats(db, orgId, 7);
 
   // Recent events
   const recentEvents = await db.query.events.findMany({
@@ -140,6 +145,9 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Email tracking chart */}
+      <EmailTrackingChart data={emailTrackingData} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent events */}
