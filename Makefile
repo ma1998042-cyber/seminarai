@@ -44,12 +44,14 @@ setup:
 	@test -f .dev.vars || (echo "BETTER_AUTH_SECRET=$$(openssl rand -base64 32)" > .dev.vars && echo "BETTER_AUTH_URL=http://localhost:3000" >> .dev.vars && echo ".dev.vars created")
 	$(MAKE) db-migrate-local
 
-# 本番シークレット設定
+# 本番シークレット設定（.dev.varsから一括デプロイ）
 secret:
-	@echo "BETTER_AUTH_SECRET を入力してください:"
-	npx wrangler secret put BETTER_AUTH_SECRET
-	@echo "BETTER_AUTH_URL を入力してください:"
-	npx wrangler secret put BETTER_AUTH_URL
+	@cat .dev.vars | while IFS='=' read -r key value; do \
+		[ -z "$$key" ] && continue; \
+		echo "Setting $$key ..."; \
+		echo "$$value" | npx wrangler secret put "$$key"; \
+	done
+	@echo "全シークレットを設定しました"
 
 # Lint
 lint:
