@@ -3,7 +3,7 @@ import { getPublicEvent } from "@/lib/db/queries/events";
 import { surveys, surveyQuestions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock } from "lucide-react";
+import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock, ArrowLeft } from "lucide-react";
 import EventRegistrationForm from "./EventRegistrationForm";
 
 export default async function PublicEventPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -51,6 +51,15 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* 戻るリンク */}
+        <a
+          href="/e"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          イベント一覧に戻る
+        </a>
+
         {/* ヘッダー: サムネイル + タイトル */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
           {(() => {
