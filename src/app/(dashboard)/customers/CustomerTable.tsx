@@ -12,6 +12,12 @@ interface CustomerTag {
   color: string;
 }
 
+interface CustomerStatusBadge {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface Customer {
   id: string;
   email: string;
@@ -19,6 +25,8 @@ interface Customer {
   company: string | null;
   jobTitle: string | null;
   status: string;
+  statusId: string | null;
+  customerStatus: CustomerStatusBadge | null;
   createdAt: string;
   customerTags: { tag: CustomerTag }[];
 }
@@ -108,6 +116,7 @@ export default function CustomerTable({
               <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">顧客</th>
               <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">会社・役職</th>
               <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">ステータス</th>
+              <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">習熟度</th>
               <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">タグ</th>
               <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">回答数</th>
               <th className="text-left px-6 py-3.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">登録日</th>
@@ -160,6 +169,18 @@ export default function CustomerTable({
                     <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", statusColors[customer.status] || statusColors.active)}>
                       {statusLabels[customer.status] || customer.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {customer.customerStatus ? (
+                      <span
+                        className="text-xs px-2.5 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: customer.customerStatus.color + "20", color: customer.customerStatus.color }}
+                      >
+                        {customer.customerStatus.name}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">--</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 flex-wrap">

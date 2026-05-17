@@ -3,6 +3,7 @@ import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getCustomers, getCustomerSurveyResponseCounts, countCustomers } from "@/lib/db/queries/customers";
 import { getTags } from "@/lib/db/queries/tags";
+import { getCustomerStatuses } from "@/lib/db/queries/customerStatuses";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -17,9 +18,9 @@ const PAGE_SIZE = 20;
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tag?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string; status?: string; statusId?: string; page?: string }>;
 }) {
-  const { q, tag, status, page: pageParam } = await searchParams;
+  const { q, tag, status, statusId, page: pageParam } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
 
   const auth = getAuth();
@@ -32,11 +33,14 @@ export default async function CustomersPage({
   const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/dashboard");
 
-  // Tags for filter
-  const allTags = await getTags(db, orgId);
+  // Tags and statuses for filter
+  const [allTags, allStatuses] = await Promise.all([
+    getTags(db, orgId),
+    getCustomerStatuses(db, orgId),
+  ]);
 
   // Build customer query with DB-side tag filter
-  const filterOptions = { search: q, status, tagId: tag };
+  const filterOptions = { search: q, status, statusId, tagId: tag };
   const [customerList, totalCount] = await Promise.all([
     getCustomers(db, orgId, {
       ...filterOptions,
@@ -98,7 +102,7 @@ export default async function CustomersPage({
         </div>
       </div>
 
-      <CustomerSearch tags={allTags ?? []} currentQ={q} currentTag={tag} currentStatus={status} />
+      <CustomerSearch tags={allTags ?? []} customerStatuses={allStatuses ?? []} currentQ={q} currentTag={tag} currentStatus={status} currentStatusId={statusId} />
 
       {customerList.length > 0 ? (
         <CustomerTable
@@ -111,9 +115,9 @@ export default async function CustomersPage({
         <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
           <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
           <h3 className="font-semibold text-gray-700 mb-2">
-            {q || tag || status ? "条件に一致する顧客がいません" : "まだ顧客がいません"}
+            {q || tag || status || statusId ? "条件に一致する顧客がいません" : "まだ顧客がいません"}
           </h3>
-          {!q && !tag && !status && (
+          {!q && !tag && !status && !statusId && (
             <>
               <p className="text-sm text-gray-400 mb-6">CSVインポートまたは手動で顧客を追加してください</p>
               <div className="flex items-center justify-center gap-3">

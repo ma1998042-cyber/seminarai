@@ -12,6 +12,7 @@ export async function getCustomers(
   options?: {
     search?: string;
     status?: string;
+    statusId?: string;
     tagId?: string;
     limit?: number;
     offset?: number;
@@ -22,6 +23,10 @@ export async function getCustomers(
 
   if (options?.status) {
     conditions.push(eq(customers.status, options.status));
+  }
+
+  if (options?.statusId) {
+    conditions.push(eq(customers.statusId, options.statusId));
   }
 
   if (options?.search) {
@@ -54,6 +59,7 @@ export async function getCustomers(
         customerTags: {
           with: { tag: true },
         },
+        customerStatus: true,
       },
     }),
   });
@@ -65,6 +71,7 @@ export async function countCustomers(
   options?: {
     search?: string;
     status?: string;
+    statusId?: string;
     tagId?: string;
   },
 ) {
@@ -72,6 +79,10 @@ export async function countCustomers(
 
   if (options?.status) {
     conditions.push(eq(customers.status, options.status));
+  }
+
+  if (options?.statusId) {
+    conditions.push(eq(customers.statusId, options.statusId));
   }
 
   if (options?.search) {
@@ -111,6 +122,7 @@ export async function getCustomerById(db: Database, orgId: string, id: string) {
       customerTags: {
         with: { tag: true },
       },
+      customerStatus: true,
     },
   });
 }
@@ -148,6 +160,7 @@ export async function updateCustomer(
     jobTitle: string | null;
     notes: string | null;
     status: string;
+    statusId: string | null;
     source: string | null;
     sourceEventId: string | null;
     customFields: Record<string, unknown>;

@@ -110,6 +110,26 @@ export async function deleteCustomer(customerId: string): Promise<{ error?: stri
   }
 }
 
+export async function updateCustomerStatusId(
+  customerId: string,
+  statusId: string | null,
+): Promise<{ error?: string }> {
+  const orgId = await getOrgId()
+  if (!orgId) return { error: '組織が見つかりません' }
+
+  try {
+    const db = getDbFromContext()
+    await dbUpdateCustomer(db, orgId, customerId, {
+      statusId: statusId ?? null,
+    })
+    revalidatePath(`/customers/${customerId}`)
+    revalidatePath('/customers')
+    return {}
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
 export async function addTagToCustomer(
   customerId: string,
   tagId: string

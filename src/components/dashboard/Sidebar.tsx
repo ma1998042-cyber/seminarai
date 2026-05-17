@@ -14,6 +14,7 @@ import {
   CreditCard,
   UserCircle,
   Image as ImageIcon,
+  CircleDot,
 } from "lucide-react";
 import { cn, getInitials, PLAN_COLORS } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ const navItems = [
 const settingsItems = [
   { href: "/settings/organization", icon: Building2, label: "組織設定" },
   { href: "/settings/members", icon: Users, label: "メンバー" },
+  { href: "/settings/statuses", icon: CircleDot, label: "ステータス管理" },
   { href: "/settings/banners", icon: ImageIcon, label: "バナー管理" },
   { href: "/settings/billing", icon: CreditCard, label: "プラン・課金" },
   { href: "/settings/profile", icon: UserCircle, label: "プロフィール" },

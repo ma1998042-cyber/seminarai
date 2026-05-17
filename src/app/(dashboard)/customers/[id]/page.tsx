@@ -3,6 +3,7 @@ import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getCustomerById, getCustomerRegistrations, getCustomerSurveyResponses } from "@/lib/db/queries/customers";
 import { getTags } from "@/lib/db/queries/tags";
+import { getCustomerStatuses } from "@/lib/db/queries/customerStatuses";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import { ArrowLeft, Mail, Phone, Building2, Briefcase, Calendar, ClipboardList }
 import { formatDateTime, cn } from "@/lib/utils";
 import CustomerEditForm from "./CustomerEditForm";
 import TagManager from "./TagManager";
+import CustomerStatusChanger from "./CustomerStatusChanger";
 
 const statusColors: Record<string, string> = {
   active: "bg-green-100 text-green-700",
@@ -44,7 +46,10 @@ export default async function CustomerDetailPage({
   const customer = await getCustomerById(db, orgId, id);
   if (!customer) notFound();
 
-  const allTags = await getTags(db, orgId);
+  const [allTags, allStatuses] = await Promise.all([
+    getTags(db, orgId),
+    getCustomerStatuses(db, orgId),
+  ]);
 
   const registrations = await getCustomerRegistrations(db, id, { limit: 5 });
   const surveyResponsesList = await getCustomerSurveyResponses(db, orgId, customer.email);
@@ -68,6 +73,14 @@ export default async function CustomerDetailPage({
               <span className={cn("text-xs px-2.5 py-1 rounded-full font-medium", statusColors[customer.status] || statusColors.active)}>
                 {statusLabels[customer.status] || customer.status}
               </span>
+              {(customer as any).customerStatus && (
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full font-medium"
+                  style={{ backgroundColor: (customer as any).customerStatus.color + "20", color: (customer as any).customerStatus.color }}
+                >
+                  {(customer as any).customerStatus.name}
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-500">{customer.email}</p>
           </div>
@@ -144,6 +157,13 @@ export default async function CustomerDetailPage({
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Customer status changer */}
+          <CustomerStatusChanger
+            customerId={id}
+            currentStatusId={customer.statusId ?? null}
+            allStatuses={(allStatuses ?? []).map(s => ({ id: s.id, name: s.name, color: s.color }))}
+          />
+
           {/* Tag manager */}
           <TagManager
             customerId={id}

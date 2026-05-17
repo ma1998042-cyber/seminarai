@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { useCallback } from "react";
 
 interface Tag { id: string; name: string; color: string }
+interface CustomerStatus { id: string; name: string; color: string }
 
 const statusOptions = [
   { value: "", label: "すべてのステータス" },
@@ -15,12 +16,14 @@ const statusOptions = [
 ];
 
 export default function CustomerSearch({
-  tags, currentQ, currentTag, currentStatus,
+  tags, customerStatuses, currentQ, currentTag, currentStatus, currentStatusId,
 }: {
   tags: Tag[];
+  customerStatuses: CustomerStatus[];
   currentQ?: string;
   currentTag?: string;
   currentStatus?: string;
+  currentStatusId?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,10 +33,11 @@ export default function CustomerSearch({
     if (key !== "q" && currentQ) params.set("q", currentQ);
     if (key !== "tag" && currentTag) params.set("tag", currentTag);
     if (key !== "status" && currentStatus) params.set("status", currentStatus);
+    if (key !== "statusId" && currentStatusId) params.set("statusId", currentStatusId);
     if (value) params.set(key, value);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
-  }, [router, pathname, currentQ, currentTag, currentStatus]);
+  }, [router, pathname, currentQ, currentTag, currentStatus, currentStatusId]);
 
   return (
     <div className="flex flex-col sm:flex-row gap-3">
@@ -74,6 +78,19 @@ export default function CustomerSearch({
           <option key={s.value} value={s.value}>{s.label}</option>
         ))}
       </select>
+
+      {customerStatuses.length > 0 && (
+        <select
+          value={currentStatusId ?? ""}
+          onChange={(e) => update("statusId", e.target.value)}
+          className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700"
+        >
+          <option value="">すべての習熟度</option>
+          {customerStatuses.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
