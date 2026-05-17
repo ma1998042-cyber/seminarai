@@ -2,10 +2,12 @@
 
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { eq } from 'drizzle-orm'
 import { getAuth } from '@/lib/auth'
 import { getDbFromContext } from '@/lib/db'
 import { getUserProfile } from '@/lib/db/queries/users'
 import { getEvents } from '@/lib/db/queries/events'
+import { emailTemplates } from '@/lib/db/schema'
 import { createSurvey as createSurveyDb, createSurveyQuestions } from '@/lib/db/queries/surveys'
 
 type Question = {
@@ -27,6 +29,8 @@ export async function createSurvey(data: {
   questions: Question[]
   payment_enabled?: boolean
   payment_amount?: number
+  completion_email_subject?: string
+  completion_email_body?: string
 }): Promise<{ surveyId?: string; error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -48,6 +52,8 @@ export async function createSurvey(data: {
       category: data.category || 'general',
       status: data.status,
       createdBy: user.id,
+      completionEmailSubject: data.completion_email_subject || null,
+      completionEmailBody: data.completion_email_body || null,
     })
 
     if (!survey) return { error: 'アンケートの作成に失敗しました' }
@@ -87,4 +93,27 @@ export async function getEventsForOrg(): Promise<{ id: string; title: string }[]
 
   const eventsList = await getEvents(db, profile.currentOrganizationId)
   return eventsList.map(e => ({ id: e.id, title: e.title }))
+}
+
+export async function getEmailTemplatesForNew(): Promise<{ id: string; name: string; subject: string; bodyHtml: string }[]> {
+  const auth = getAuth()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const user = session?.user
+  if (!user) return []
+
+  const db = getDbFromContext()
+  const profile = await getUserProfile(db, user.id)
+  if (!profile?.currentOrganizationId) return []
+
+  const templates = await db
+    .select({
+      id: emailTemplates.id,
+      name: emailTemplates.name,
+      subject: emailTemplates.subject,
+      bodyHtml: emailTemplates.bodyHtml,
+    })
+    .from(emailTemplates)
+    .where(eq(emailTemplates.organizationId, profile.currentOrganizationId))
+
+  return templates
 }

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Plus, Trash2, GripVertical, Loader2, ClipboardList,
-  Type, AlignLeft, CheckSquare, Circle, ChevronDown, Star, Hash, CreditCard, Clock,
+  Type, AlignLeft, CheckSquare, Circle, ChevronDown, Star, Hash, CreditCard, Clock, Mail, FileText, X,
 } from "lucide-react";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
-import { updateSurvey } from "./actions";
+import { updateSurvey, getEmailTemplates } from "./actions";
 
 type QuestionType = "text" | "textarea" | "radio" | "checkbox" | "select" | "rating" | "number" | "email";
 
@@ -42,6 +42,8 @@ type InitialData = {
   deadline: number | null;
   payment_enabled: boolean;
   payment_amount: number;
+  completion_email_subject: string;
+  completion_email_body: string;
   questions: Question[];
 };
 
@@ -69,6 +71,13 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
   const [deadline, setDeadline] = useState(initial.deadline ? unixToDatetimeLocal(initial.deadline) : "");
   const [questions, setQuestions] = useState<Question[]>(initial.questions);
   const [selectedType, setSelectedType] = useState<QuestionType>("text");
+  const [completionEmailSubject, setCompletionEmailSubject] = useState(initial.completion_email_subject);
+  const [completionEmailBody, setCompletionEmailBody] = useState(initial.completion_email_body);
+  const [emailSectionOpen, setEmailSectionOpen] = useState(true);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templates, setTemplates] = useState<{ id: string; name: string; subject: string; bodyHtml: string }[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const createQuestion = (type: QuestionType): Question => ({
     id: Math.random().toString(36).substr(2, 9),
@@ -108,6 +117,8 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
       payment_enabled: paymentEnabled,
       payment_amount: paymentEnabled && paymentAmount ? parseInt(paymentAmount) : 0,
       deadline: datetimeLocalToUnix(deadline),
+      completion_email_subject: completionEmailSubject,
+      completion_email_body: completionEmailBody,
     });
 
     setLoading(false);
@@ -205,6 +216,125 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
           )}
         </div>
       </div>
+
+      {/* 完了メール設定 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+        <button
+          type="button"
+          onClick={() => setEmailSectionOpen(!emailSectionOpen)}
+          className="flex items-center gap-2 w-full text-left"
+        >
+          <Mail className="w-4 h-4 text-gray-400" />
+          <h2 className="font-semibold text-gray-900">完了メール設定</h2>
+          <ChevronDown className={cn("w-4 h-4 text-gray-400 ml-auto transition-transform", emailSectionOpen && "rotate-180")} />
+        </button>
+        {emailSectionOpen && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">件名</label>
+              <input
+                type="text"
+                value={completionEmailSubject}
+                onChange={(e) => setCompletionEmailSubject(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="例：アンケートご回答ありがとうございます"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">本文</label>
+              <textarea
+                ref={bodyTextareaRef}
+                value={completionEmailBody}
+                onChange={(e) => setCompletionEmailBody(e.target.value)}
+                rows={6}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                placeholder="メール本文を入力してください"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-2">変数を挿入:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {["{{name}}", "{{email}}", "{{event_title}}", "{{event_date}}", "{{event_location}}", "{{event_url}}", "{{online_url}}"].map((variable) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    onClick={() => {
+                      const textarea = bodyTextareaRef.current;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const newValue = completionEmailBody.slice(0, start) + variable + completionEmailBody.slice(end);
+                        setCompletionEmailBody(newValue);
+                        setTimeout(() => {
+                          textarea.focus();
+                          textarea.setSelectionRange(start + variable.length, start + variable.length);
+                        }, 0);
+                      } else {
+                        setCompletionEmailBody(completionEmailBody + variable);
+                      }
+                    }}
+                    className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs hover:bg-gray-200 transition-colors"
+                  >
+                    {variable}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setTemplateModalOpen(true);
+                setTemplatesLoading(true);
+                const result = await getEmailTemplates();
+                setTemplates(result);
+                setTemplatesLoading(false);
+              }}
+              className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              <FileText className="w-4 h-4" />テンプレートから読み込み
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* テンプレート選択モーダル */}
+      {templateModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">テンプレートを選択</h3>
+              <button onClick={() => setTemplateModalOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            ) : templates.length === 0 ? (
+              <p className="text-sm text-gray-500 py-4 text-center">テンプレートがありません</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {templates.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => {
+                      setCompletionEmailSubject(tpl.subject);
+                      setCompletionEmailBody(tpl.bodyHtml);
+                      setTemplateModalOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-gray-900">{tpl.name}</p>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">{tpl.subject}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {questions.map((question, index) => (

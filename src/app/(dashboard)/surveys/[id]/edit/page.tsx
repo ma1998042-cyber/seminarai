@@ -35,6 +35,8 @@ export default async function EditSurveyPage({ params }: { params: Promise<{ id:
         deadline: survey.deadline ?? null,
         payment_enabled: false,
         payment_amount: 0,
+        completion_email_subject: survey.completionEmailSubject ?? "",
+        completion_email_body: survey.completionEmailBody ?? "",
         questions: (questions ?? []).map((q) => ({
           id: q.id,
           question_type: q.questionType as "text" | "textarea" | "radio" | "checkbox" | "select" | "rating" | "number" | "email",

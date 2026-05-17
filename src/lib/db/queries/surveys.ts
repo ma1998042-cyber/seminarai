@@ -38,6 +38,8 @@ export async function createSurvey(
     redirectUrl?: string;
     settings?: Record<string, unknown>;
     createdBy?: string;
+    completionEmailSubject?: string | null;
+    completionEmailBody?: string | null;
   },
 ) {
   const [survey] = await db.insert(surveys).values(data).returning();
@@ -63,6 +65,8 @@ export async function updateSurvey(
     deadline: number | null;
     paymentEnabled: boolean;
     paymentAmount: number | null;
+    completionEmailSubject: string | null;
+    completionEmailBody: string | null;
   }>,
 ) {
   const [survey] = await db
