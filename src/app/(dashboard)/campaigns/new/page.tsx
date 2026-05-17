@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, Mail, Users, Tag, ClipboardList, FileText } from "lucide-react";
 import { VariableInsertButton } from "@/components/campaigns/VariableInsertButton";
 import { cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
-import { getTagsForOrg, getSurveysForOrg, createCampaignAction, getCustomersByTarget, getTemplatesForOrg } from "./actions";
+import { getTagsForOrg, getSurveysForOrg, createCampaignAction, sendNowAction, getCustomersByTarget, getTemplatesForOrg } from "./actions";
 
 export default function NewCampaignPage() {
   const router = useRouter();
