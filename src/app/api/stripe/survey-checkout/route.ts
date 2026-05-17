@@ -35,9 +35,6 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const cancelUrl = survey.eventId
-      ? `${appUrl}/e/${survey.eventId}`
-      : `${appUrl}/s/${surveyId}`
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -54,7 +51,7 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       customer_email: respondentEmail || undefined,
       success_url: `${appUrl}/s/${surveyId}/complete?session_id={CHECKOUT_SESSION_ID}&response_id=${response.id}`,
-      cancel_url: cancelUrl,
+      cancel_url: `${appUrl}/s/${surveyId}`,
       metadata: {
         surveyResponseId: response.id,
         surveyId,

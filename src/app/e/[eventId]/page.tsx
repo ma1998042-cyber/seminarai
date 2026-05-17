@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvent } from "@/lib/db/queries/events";
 import { surveys, surveyQuestions } from "@/lib/db/schema";
@@ -27,18 +28,22 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
     );
   }
 
-  const isFull = event.capacity != null && event.registrationCount >= event.capacity;
-  const isDeadlineExpired = event.registrationDeadline
-    ? new Date(event.registrationDeadline) < new Date()
-    : false;
-
-  // 公開設定されたアンケートを取得
+  // 事前アンケートがactive なら /s/{surveyId} にリダイレクト
   const registrationSurvey = await db.query.surveys.findFirst({
     where: and(
       eq(surveys.eventId, event.id),
       eq(surveys.category, 'pre_event'),
     ),
   });
+
+  if (registrationSurvey?.status === 'active') {
+    redirect(`/s/${registrationSurvey.id}`);
+  }
+
+  const isFull = event.capacity != null && event.registrationCount >= event.capacity;
+  const isDeadlineExpired = event.registrationDeadline
+    ? new Date(event.registrationDeadline) < new Date()
+    : false;
 
   // アンケートがあれば質問を取得
   let questions: { id: string; questionType: string; title: string; description: string | null; isRequired: boolean; options: unknown[] | null }[] = [];

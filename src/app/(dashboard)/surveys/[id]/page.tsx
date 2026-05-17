@@ -29,9 +29,7 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
 
   const responses = await getSurveyResponses(db, survey.id);
 
-  const publicUrl = survey.eventId
-    ? `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/e/${survey.eventId}`
-    : `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${survey.id}`;
+  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/s/${survey.id}`;
 
   const statusColors: Record<string, string> = {
     draft: "bg-gray-100 text-gray-600",
