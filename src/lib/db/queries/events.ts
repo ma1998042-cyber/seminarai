@@ -1,4 +1,4 @@
-import { eq, and, sql, inArray, gte, asc } from "drizzle-orm";
+import { eq, and, sql, inArray, gte, lt, asc } from "drizzle-orm";
 import { events, eventRegistrations, customers } from "../schema";
 import type { Database } from "..";
 
@@ -11,26 +11,48 @@ export async function getEvents(
   orgId: string,
   options?: {
     visibility?: string;
+    ended?: boolean;
     limit?: number;
     offset?: number;
   },
 ) {
-  const where = options?.visibility
-    ? and(eq(events.organizationId, orgId), eq(events.visibility, options.visibility))
-    : eq(events.organizationId, orgId);
+  const conditions = [eq(events.organizationId, orgId)];
+  if (options?.visibility) {
+    conditions.push(eq(events.visibility, options.visibility));
+  }
+  if (options?.ended !== undefined) {
+    const today = new Date().toISOString().split("T")[0];
+    if (options.ended) {
+      // 終了済み: startDate < today (startDateがnullのものは含めない)
+      conditions.push(sql`${events.startDate} IS NOT NULL`);
+      conditions.push(lt(events.startDate, today));
+    } else {
+      // 開催予定: startDate >= today OR startDate IS NULL
+      conditions.push(sql`(${events.startDate} >= ${today} OR ${events.startDate} IS NULL)`);
+    }
+  }
 
   return db.query.events.findMany({
-    where,
+    where: and(...conditions),
     orderBy: (events, { desc }) => [desc(events.createdAt)],
     ...(options?.limit !== undefined && { limit: options.limit }),
     ...(options?.offset !== undefined && { offset: options.offset }),
   });
 }
 
-export async function countEvents(db: Database, orgId: string, visibility?: string) {
+export async function countEvents(db: Database, orgId: string, options?: { visibility?: string; ended?: boolean }) {
   const conditions = [eq(events.organizationId, orgId)];
-  if (visibility) {
-    conditions.push(eq(events.visibility, visibility));
+  if (options?.visibility) {
+    conditions.push(eq(events.visibility, options.visibility));
+  }
+  if (options?.ended !== undefined) {
+    const today = new Date().toISOString().split("T")[0];
+    if (options.ended) {
+      conditions.push(sql`${events.startDate} IS NOT NULL`);
+      conditions.push(lt(events.startDate, today));
+    } else {
+      conditions.push(sql`(${events.startDate} >= ${today} OR ${events.startDate} IS NULL)`);
+    }
   }
   const result = await db
     .select({ count: sql<number>`count(*)` })
@@ -99,6 +121,8 @@ export async function updateEvent(
     registrationDeadline: string | null;
     reminderEnabled: number;
     reminderDays: string;
+    reminderSubject: string | null;
+    reminderBody: string | null;
   }>,
 ) {
   const [event] = await db
