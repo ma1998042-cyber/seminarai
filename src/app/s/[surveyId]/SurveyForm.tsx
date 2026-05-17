@@ -42,6 +42,11 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
   };
 
   const validate = () => {
+    // 非匿名アンケートではメールアドレス必須
+    if (!survey.is_anonymous && !respondentEmail.trim()) {
+      setError("メールアドレスは必須です");
+      return false;
+    }
     for (const q of questions) {
       const ans = answers[q.id];
       if (q.is_required && (ans === undefined || ans === "" || (Array.isArray(ans) && ans.length === 0))) {
@@ -131,7 +136,7 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
         <form onSubmit={handleSubmit} className="space-y-4">
           {!survey.is_anonymous && (
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h3 className="font-semibold text-gray-900 mb-4">お名前・連絡先（任意）</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">お名前・連絡先</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">お名前</label>
@@ -144,9 +149,12 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">メールアドレス</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    メールアドレス<span className="text-red-500 ml-1">*</span>
+                  </label>
                   <input
                     type="email"
+                    required
                     value={respondentEmail}
                     onChange={(e) => setRespondentEmail(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"

@@ -20,12 +20,17 @@ export async function submitSurveyResponse(
     // アンケート情報を取得
     const survey = await db.query.surveys.findFirst({
       where: eq(surveys.id, surveyId),
-      columns: { category: true, eventId: true, organizationId: true, deadline: true },
+      columns: { category: true, eventId: true, organizationId: true, deadline: true, isAnonymous: true },
     })
 
     // 期限チェック
     if (survey?.deadline && Math.floor(Date.now() / 1000) > survey.deadline) {
       return { error: 'このアンケートの回答期限を過ぎています' }
+    }
+
+    // 非匿名アンケートではメールアドレス必須
+    if (survey && !survey.isAnonymous && !respondentEmail?.trim()) {
+      return { error: 'メールアドレスは必須です' }
     }
 
     // respondentEmail があれば全カテゴリで顧客レコードを upsert
