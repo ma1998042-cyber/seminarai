@@ -38,8 +38,12 @@ export async function createSurvey(
     redirectUrl?: string;
     settings?: Record<string, unknown>;
     createdBy?: string;
+    publishedAt?: string;
+    completionEmailEnabled?: boolean;
     completionEmailSubject?: string | null;
     completionEmailBody?: string | null;
+    paymentEnabled?: boolean;
+    paymentAmount?: number;
   },
 ) {
   const [survey] = await db.insert(surveys).values(data).returning();
@@ -65,6 +69,7 @@ export async function updateSurvey(
     deadline: number | null;
     paymentEnabled: boolean;
     paymentAmount: number | null;
+    completionEmailEnabled: boolean;
     completionEmailSubject: string | null;
     completionEmailBody: string | null;
   }>,
@@ -160,6 +165,7 @@ export async function updateSurveyResponse(
   data: Partial<{
     paymentStatus: string;
     stripeSessionId: string;
+    customerId: string;
   }>,
 ) {
   const [response] = await db

@@ -21,7 +21,7 @@ export async function submitSurveyResponse(
     // アンケート情報を取得
     const survey = await db.query.surveys.findFirst({
       where: eq(surveys.id, surveyId),
-      columns: { category: true, eventId: true, organizationId: true, deadline: true, isAnonymous: true, completionEmailSubject: true, completionEmailBody: true },
+      columns: { category: true, eventId: true, organizationId: true, deadline: true, isAnonymous: true, completionEmailEnabled: true, completionEmailSubject: true, completionEmailBody: true },
     })
 
     // 期限チェック
@@ -58,8 +58,8 @@ export async function submitSurveyResponse(
     // response_count をインクリメント
     await incrementSurveyResponseCount(db, surveyId)
 
-    // 完了メール送信（設定されている場合）
-    if (survey?.completionEmailBody && respondentEmail) {
+    // 完了メール送信（有効化されている場合のみ）
+    if (survey?.completionEmailEnabled && survey.completionEmailBody && respondentEmail) {
       try {
         let eventData: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } | undefined
         if (survey.eventId) {

@@ -62,9 +62,9 @@ export default function NewSurveyForm({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedType, setSelectedType] = useState<QuestionType>("text");
+  const [completionEmailEnabled, setCompletionEmailEnabled] = useState(false);
   const [completionEmailSubject, setCompletionEmailSubject] = useState("");
   const [completionEmailBody, setCompletionEmailBody] = useState("");
-  const [emailSectionOpen, setEmailSectionOpen] = useState(true);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templates, setTemplates] = useState<{ id: string; name: string; subject: string; bodyHtml: string }[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -98,8 +98,9 @@ export default function NewSurveyForm({
       questions: questions.map((q, i) => ({ ...q, sort_order: i })),
       payment_enabled: paymentEnabled,
       payment_amount: paymentEnabled && paymentAmount ? parseInt(paymentAmount) : 0,
-      completion_email_subject: completionEmailSubject,
-      completion_email_body: completionEmailBody,
+      completion_email_enabled: completionEmailEnabled,
+      completion_email_subject: completionEmailEnabled ? completionEmailSubject : "",
+      completion_email_body: completionEmailEnabled ? completionEmailBody : "",
     });
 
     setLoading(false);
@@ -233,16 +234,26 @@ export default function NewSurveyForm({
 
       {/* 完了メール設定 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-        <button
-          type="button"
-          onClick={() => setEmailSectionOpen(!emailSectionOpen)}
-          className="flex items-center gap-2 w-full text-left"
-        >
-          <Mail className="w-4 h-4 text-gray-400" />
-          <h2 className="font-semibold text-gray-900">完了メール設定</h2>
-          <ChevronDown className={cn("w-4 h-4 text-gray-400 ml-auto transition-transform", emailSectionOpen && "rotate-180")} />
-        </button>
-        {emailSectionOpen && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">回答完了メール送信</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCompletionEmailEnabled(!completionEmailEnabled)}
+            className={cn(
+              "relative w-11 h-6 rounded-full transition-colors",
+              completionEmailEnabled ? "bg-indigo-600" : "bg-gray-200"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
+              completionEmailEnabled ? "translate-x-5" : "translate-x-0"
+            )} />
+          </button>
+        </div>
+        {completionEmailEnabled && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">件名</label>

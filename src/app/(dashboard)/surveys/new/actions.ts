@@ -29,6 +29,7 @@ export async function createSurvey(data: {
   questions: Question[]
   payment_enabled?: boolean
   payment_amount?: number
+  completion_email_enabled?: boolean
   completion_email_subject?: string
   completion_email_body?: string
 }): Promise<{ surveyId?: string; error?: string }> {
@@ -52,8 +53,12 @@ export async function createSurvey(data: {
       category: data.category || 'general',
       status: data.status,
       createdBy: user.id,
+      paymentEnabled: data.payment_enabled ?? false,
+      paymentAmount: data.payment_enabled && data.payment_amount ? data.payment_amount : 0,
+      completionEmailEnabled: data.completion_email_enabled ?? false,
       completionEmailSubject: data.completion_email_subject || null,
       completionEmailBody: data.completion_email_body || null,
+      publishedAt: data.status === 'active' ? new Date().toISOString() : undefined,
     })
 
     if (!survey) return { error: 'アンケートの作成に失敗しました' }

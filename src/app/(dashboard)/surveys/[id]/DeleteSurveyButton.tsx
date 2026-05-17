@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
 import { deleteSurveyAction } from "./actions";
 
-export default function DeleteSurveyButton({ surveyId }: { surveyId: string }) {
+interface DeleteSurveyButtonProps {
+  surveyId: string;
+  redirectTo?: string;
+  variant?: "default" | "icon";
+}
+
+export default function DeleteSurveyButton({ surveyId, redirectTo = "/surveys", variant = "default" }: DeleteSurveyButtonProps) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,18 +26,29 @@ export default function DeleteSurveyButton({ surveyId }: { surveyId: string }) {
       setLoading(false);
       return;
     }
-    router.push("/surveys");
+    router.push(redirectTo);
+    router.refresh();
   };
 
   return (
     <>
-      <button
-        onClick={() => setConfirmDelete(true)}
-        className="px-4 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1.5"
-      >
-        <Trash2 className="w-4 h-4" />
-        削除
-      </button>
+      {variant === "icon" ? (
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
+          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="削除"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="px-4 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1.5"
+        >
+          <Trash2 className="w-4 h-4" />
+          削除
+        </button>
+      )}
 
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

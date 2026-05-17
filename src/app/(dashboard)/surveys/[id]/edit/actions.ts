@@ -33,6 +33,7 @@ export async function updateSurvey(surveyId: string, data: {
   payment_enabled?: boolean
   payment_amount?: number
   deadline?: number | null
+  completion_email_enabled?: boolean
   completion_email_subject?: string
   completion_email_body?: string
 }) {
@@ -67,6 +68,7 @@ export async function updateSurvey(surveyId: string, data: {
       deadline: data.deadline ?? null,
       paymentEnabled: data.payment_enabled ?? false,
       paymentAmount: data.payment_amount ?? 0,
+      completionEmailEnabled: data.completion_email_enabled ?? false,
       completionEmailSubject: data.completion_email_subject || null,
       completionEmailBody: data.completion_email_body || null,
     })

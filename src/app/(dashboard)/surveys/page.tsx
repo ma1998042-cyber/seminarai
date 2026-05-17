@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { eq, and, like, desc, count } from "drizzle-orm";
-import { Plus, ClipboardList, MessageSquare, ExternalLink, Search, Clock } from "lucide-react";
+import { Plus, ClipboardList, MessageSquare, ExternalLink, Search, Clock, Trash2 } from "lucide-react";
 import { formatDate, cn, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
@@ -10,6 +10,7 @@ import { getUserProfile } from "@/lib/db/queries/users";
 import { getEvents } from "@/lib/db/queries/events";
 import { surveys as surveysTable } from "@/lib/db/schema";
 import SurveySearch from "./SurveySearch";
+import DeleteSurveyButton from "./[id]/DeleteSurveyButton";
 import Pagination from "@/components/Pagination";
 
 const PAGE_SIZE = 20;
@@ -128,6 +129,7 @@ export default async function SurveysPage({
                 >
                   編集
                 </Link>
+                <DeleteSurveyButton surveyId={survey.id} variant="icon" redirectTo="/surveys" />
                 <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
               </div>
             </div>

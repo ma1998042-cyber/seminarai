@@ -49,8 +49,8 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
         description: survey.description ?? null,
         thank_you_message: survey.thankYouMessage ?? null,
         is_anonymous: survey.isAnonymous ?? false,
-        payment_enabled: false,
-        payment_amount: 0,
+        payment_enabled: survey.paymentEnabled ?? false,
+        payment_amount: survey.paymentAmount ?? 0,
       }}
       questions={(questions ?? []).map((q) => ({
         id: q.id,

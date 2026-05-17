@@ -1,12 +1,29 @@
 import Stripe from "stripe";
+import { eq, sql } from "drizzle-orm";
 import { CheckCircle, XCircle } from "lucide-react";
 import { getDbFromContext } from "@/lib/db";
-import { getSurveyById, incrementSurveyResponseCount } from "@/lib/db/queries/surveys";
+import { getSurveyById, getSurveyResponseById, incrementSurveyResponseCount, updateSurveyResponse } from "@/lib/db/queries/surveys";
+import { upsertCustomerByEmail } from "@/lib/db/queries/customers";
+import { surveys, events, eventRegistrations } from "@/lib/db/schema";
+import { sendEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-04-10",
   httpClient: Stripe.createFetchHttpClient(),
 });
+
+function replaceEmailPlaceholders(
+  template: string,
+  context: { name: string; email: string; event?: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } }
+): string {
+  return template
+    .replace(/\{\{name\}\}/g, context.name || '')
+    .replace(/\{\{email\}\}/g, context.email || '')
+    .replace(/\{\{event_title\}\}/g, context.event?.title || '')
+    .replace(/\{\{event_date\}\}/g, context.event?.startDate || '')
+    .replace(/\{\{event_location\}\}/g, context.event?.location || '')
+    .replace(/\{\{online_url\}\}/g, context.event?.onlineUrl || '');
+}
 
 export default async function SurveyCompletePage({
   params,
@@ -33,12 +50,93 @@ export default async function SurveyCompletePage({
     paid = session.payment_status === "paid";
 
     if (paid) {
-      // Increment response_count
       const survey = await getSurveyById(db, surveyId);
+      const response = await getSurveyResponseById(db, response_id);
 
       if (survey) {
         thankYouMessage = survey.thankYouMessage || thankYouMessage;
         await incrementSurveyResponseCount(db, surveyId);
+      }
+
+      if (survey && response) {
+        const respondentEmail = response.respondentEmail || '';
+        const respondentName = response.respondentName || '';
+
+        // 顧客レコードを upsert
+        let customerId: string | undefined;
+        if (respondentEmail) {
+          const customer = await upsertCustomerByEmail(db, survey.organizationId, {
+            email: respondentEmail,
+            fullName: respondentName || undefined,
+            source: 'survey',
+            sourceEventId: survey.eventId || undefined,
+          });
+          customerId = customer.id;
+        }
+
+        // paymentStatus を paid に更新 & customerId を紐付け
+        await updateSurveyResponse(db, response_id, {
+          paymentStatus: 'paid',
+          ...(customerId ? { customerId } : {}),
+        });
+
+        // 完了メール送信
+        if (survey.completionEmailEnabled && survey.completionEmailBody && respondentEmail) {
+          try {
+            let eventData: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } | undefined;
+            if (survey.eventId) {
+              const event = await db.query.events.findFirst({
+                where: eq(events.id, survey.eventId),
+                columns: { title: true, startDate: true, location: true, onlineUrl: true },
+              });
+              if (event) eventData = event;
+            }
+            const subject = replaceEmailPlaceholders(
+              survey.completionEmailSubject || 'ご回答ありがとうございます',
+              { name: respondentName, email: respondentEmail, event: eventData }
+            );
+            const body = replaceEmailPlaceholders(
+              survey.completionEmailBody,
+              { name: respondentName, email: respondentEmail, event: eventData }
+            );
+            await sendEmail(respondentEmail, subject, body, 'text');
+          } catch {
+            // メール送信失敗は表示に影響させない
+          }
+        }
+
+        // category=registration かつ eventId がある場合、参加者登録
+        if (
+          survey.category === 'registration' &&
+          survey.eventId &&
+          respondentEmail &&
+          customerId
+        ) {
+          const eventId = survey.eventId;
+          const existingReg = await db.query.eventRegistrations.findFirst({
+            where: (r, { and, eq: colEq }) =>
+              and(colEq(r.eventId, eventId), colEq(r.email, respondentEmail)),
+            columns: { id: true },
+          });
+
+          if (!existingReg) {
+            await db.insert(eventRegistrations).values({
+              eventId,
+              customerId,
+              organizationId: survey.organizationId,
+              email: respondentEmail,
+              fullName: respondentName || undefined,
+              status: 'registered',
+            });
+            await db
+              .update(events)
+              .set({
+                registrationCount: sql`coalesce(${events.registrationCount}, 0) + 1`,
+                updatedAt: new Date().toISOString(),
+              })
+              .where(eq(events.id, eventId));
+          }
+        }
       }
     }
   } catch {
