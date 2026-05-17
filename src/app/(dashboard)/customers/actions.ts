@@ -77,6 +77,14 @@ export async function updateCustomer(
   const orgId = await getOrgId()
   if (!orgId) return { error: '組織が見つかりません' }
 
+  // メールアドレスの形式バリデーション
+  if (data.email !== undefined) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!data.email || !emailRegex.test(data.email)) {
+      return { error: 'メールアドレスの形式が正しくありません' }
+    }
+  }
+
   try {
     const db = getDbFromContext()
     await dbUpdateCustomer(db, orgId, customerId, {
@@ -92,6 +100,9 @@ export async function updateCustomer(
     revalidatePath('/customers')
     return {}
   } catch (e: any) {
+    if (e.message?.includes('UNIQUE constraint failed') || e.message?.includes('unique')) {
+      return { error: 'このメールアドレスは既に登録されています' }
+    }
     return { error: e.message }
   }
 }

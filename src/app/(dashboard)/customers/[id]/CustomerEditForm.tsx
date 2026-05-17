@@ -39,7 +39,16 @@ export default function CustomerEditForm({ customerId, initial }: Props) {
   const [notes, setNotes] = useState(initial.notes);
   const [status, setStatus] = useState(initial.status);
 
+  const validateEmail = (value: string): string | null => {
+    if (!value) return "メールアドレスは必須です";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) return "メールアドレスの形式が正しくありません";
+    return null;
+  };
+
   const handleSave = async () => {
+    const emailError = validateEmail(email);
+    if (emailError) { setError(emailError); return; }
     setLoading(true);
     setError("");
     const result = await updateCustomer(customerId, {
