@@ -13,6 +13,7 @@ import {
   Building2,
   CreditCard,
   UserCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn, getInitials, PLAN_COLORS } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ const navItems = [
 const settingsItems = [
   { href: "/settings/organization", icon: Building2, label: "組織設定" },
   { href: "/settings/members", icon: Users, label: "メンバー" },
+  { href: "/settings/banners", icon: ImageIcon, label: "バナー管理" },
   { href: "/settings/billing", icon: CreditCard, label: "プラン・課金" },
   { href: "/settings/profile", icon: UserCircle, label: "プロフィール" },
 ];
