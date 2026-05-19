@@ -19,16 +19,20 @@ export default function EventRegistrationForm({
   surveyId,
   organizationId,
   questions,
+  participationRequirements,
 }: {
   eventId: string;
   isFull: boolean;
   surveyId: string | null;
   organizationId: string;
   questions: Question[];
+  participationRequirements: string | null;
 }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [notificationConsent, setNotificationConsent] = useState(false);
+  const [agreedToRequirements, setAgreedToRequirements] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -63,6 +67,11 @@ export default function EventRegistrationForm({
         return false;
       }
     }
+    // 参加条件の同意チェック
+    if (participationRequirements && !agreedToRequirements) {
+      setError("参加条件への同意が必要です");
+      return false;
+    }
     return true;
   };
 
@@ -79,6 +88,7 @@ export default function EventRegistrationForm({
       surveyId: surveyId ?? undefined,
       organizationId,
       answers: questions.length > 0 ? answers : undefined,
+      notificationConsent: notificationConsent ? 1 : 0,
     });
 
     setSubmitting(false);
@@ -239,6 +249,38 @@ export default function EventRegistrationForm({
             )}
           </div>
         ))}
+
+        {/* 参加条件への同意チェック */}
+        {participationRequirements && (
+          <div className="pt-2">
+            <label className="flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={agreedToRequirements}
+                onChange={(e) => setAgreedToRequirements(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded mt-0.5 flex-shrink-0"
+              />
+              <span className="text-sm text-amber-800">
+                参加条件を確認し、同意しました <span className="text-red-500">*</span>
+              </span>
+            </label>
+          </div>
+        )}
+
+        {/* お知らせ送信許可 */}
+        <div className="pt-2">
+          <label className="flex items-start gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+            <input
+              type="checkbox"
+              checked={notificationConsent}
+              onChange={(e) => setNotificationConsent(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 rounded mt-0.5 flex-shrink-0"
+            />
+            <span className="text-sm text-gray-700">
+              今後のイベント等のお知らせを受け取る
+            </span>
+          </label>
+        </div>
 
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">

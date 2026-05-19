@@ -205,6 +205,7 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
             isFull={isFull}
             surveyId={registrationSurvey?.id ?? null}
             organizationId={event.organizationId}
+            participationRequirements={event.participationRequirements ?? null}
             questions={questions.map((q) => ({
               id: q.id,
               question_type: q.questionType,

@@ -17,6 +17,7 @@ export async function registerForEventAction(
     surveyId?: string;
     organizationId: string;
     answers?: Record<string, unknown>;
+    notificationConsent?: number;
   }
 ): Promise<{ error?: string }> {
   const db = getDbFromContext();
@@ -72,6 +73,7 @@ export async function registerForEventAction(
       organizationId: event.organizationId,
       email: formData.email,
       fullName: formData.fullName,
+      notificationConsent: formData.notificationConsent ?? 0,
     });
 
     // 5. registrationCount をインクリメント
