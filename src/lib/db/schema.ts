@@ -112,6 +112,8 @@ export const events = sqliteTable("events", {
   capacity: integer("capacity"),
   showRemainingCapacity: integer("show_remaining_capacity").notNull().default(0),
   participationRequirements: text("participation_requirements"),
+  recommendedFor: text("recommended_for"),
+  participationBenefits: text("participation_benefits"),
   registrationDeadline: text("registration_deadline"),
   registrationCount: integer("registration_count").notNull().default(0),
   visibility: text("visibility").notNull().default("draft"),
@@ -217,6 +219,7 @@ export const eventRegistrations = sqliteTable("event_registrations", {
   status: text("status").notNull().default("registered"),
   registeredAt: text("registered_at").notNull().default(sql`(datetime('now'))`),
   checkedInAt: text("checked_in_at"),
+  notificationConsent: integer("notification_consent").notNull().default(0),
 }, (table) => [
   uniqueIndex("event_reg_event_email_unique").on(table.eventId, table.email),
 ]);

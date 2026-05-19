@@ -84,6 +84,8 @@ export async function createEvent(
     capacity?: number;
     thumbnailUrl?: string;
     imageUrls?: string[];
+    recommendedFor?: string;
+    participationBenefits?: string;
     tags?: string[];
     customFields?: unknown[];
     settings?: Record<string, unknown>;
@@ -118,6 +120,8 @@ export async function updateEvent(
     settings: Record<string, unknown>;
     showRemainingCapacity: number;
     participationRequirements: string | null;
+    recommendedFor: string | null;
+    participationBenefits: string | null;
     registrationDeadline: string | null;
     reminderEnabled: number;
     reminderDays: string;
@@ -215,6 +219,7 @@ export async function upsertEventRegistration(
     email: string;
     fullName?: string;
     status?: string;
+    notificationConsent?: number;
   },
 ) {
   const [registration] = await db
@@ -226,6 +231,7 @@ export async function upsertEventRegistration(
         ...(data.fullName !== undefined && { fullName: data.fullName }),
         ...(data.customerId !== undefined && { customerId: data.customerId }),
         ...(data.status !== undefined && { status: data.status }),
+        ...(data.notificationConsent !== undefined && { notificationConsent: data.notificationConsent }),
       },
     })
     .returning();
