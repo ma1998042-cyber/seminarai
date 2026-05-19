@@ -11,6 +11,7 @@ import { eq, and, or, isNull, ne } from "drizzle-orm";
 import { surveys as surveysTable } from "@/lib/db/schema";
 import LinkSurveyButton from "./LinkSurveyButton";
 import DeleteEventButton from "./DeleteEventButton";
+import DuplicateEventButton from "./DuplicateEventButton";
 
 const statusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-600",
@@ -91,6 +92,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <Edit className="w-4 h-4" />
             編集
           </Link>
+          <DuplicateEventButton eventId={event.id} />
           <DeleteEventButton eventId={event.id} />
         </div>
       </div>
