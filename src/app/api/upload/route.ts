@@ -27,8 +27,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "ファイルサイズは5MB以下にしてください" }, { status: 400 });
   }
 
+  const ALLOWED_PREFIXES = ["events", "blog"];
+  const prefix = formData.get("prefix") as string | null;
+  const safePrefix = prefix && ALLOWED_PREFIXES.includes(prefix) ? prefix : "events";
+
   const ext = file.name.split(".").pop() || "jpg";
-  const key = `events/${crypto.randomUUID()}.${ext}`;
+  const key = `${safePrefix}/${crypto.randomUUID()}.${ext}`;
 
   const { env } = getCloudflareContext();
   await env.R2.put(key, await file.arrayBuffer(), {
