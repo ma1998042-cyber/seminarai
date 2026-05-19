@@ -15,6 +15,8 @@ import {
   UserCircle,
   Image as ImageIcon,
   CircleDot,
+  FileText,
+  PenSquare,
 } from "lucide-react";
 import { cn, getInitials, PLAN_COLORS } from "@/lib/utils";
 
@@ -30,6 +32,8 @@ const navItems = [
   { href: "/surveys", icon: ClipboardList, label: "アンケート管理" },
   { href: "/customers", icon: Users, label: "顧客管理" },
   { href: "/campaigns", icon: Mail, label: "メルマガ配信" },
+  { href: "/landing-pages", icon: FileText, label: "LP管理" },
+  { href: "/blog", icon: PenSquare, label: "ブログ" },
 ];
 
 const settingsItems = [
