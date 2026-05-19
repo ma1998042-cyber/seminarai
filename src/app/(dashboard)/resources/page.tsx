@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2 } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getResources } from "@/lib/db/queries/resources";
+import { resourceDownloadLeads } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
 import ResourceToggle from "./ResourceToggle";
+import ResourceDeleteButton from "./ResourceDeleteButton";
 
 export default async function ResourcesListPage() {
   const auth = getAuth();
@@ -20,6 +23,16 @@ export default async function ResourcesListPage() {
   if (!orgId) redirect("/onboarding");
 
   const items = await getResources(db, orgId);
+
+  // ダウンロード数を取得
+  const downloadCounts = await db
+    .select({
+      resourceId: resourceDownloadLeads.resourceId,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(resourceDownloadLeads)
+    .groupBy(resourceDownloadLeads.resourceId);
+  const countMap = new Map(downloadCounts.map((r) => [r.resourceId, r.count]));
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -46,8 +59,10 @@ export default async function ResourcesListPage() {
               <tr className="border-b border-gray-100 text-left">
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">タイトル</th>
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">説明</th>
+                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">DL数</th>
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">並び順</th>
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">公開</th>
+                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -64,9 +79,24 @@ export default async function ResourcesListPage() {
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                     {item.description || "-"}
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {countMap.get(item.id) || 0}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-500">{item.sortOrder}</td>
                   <td className="px-6 py-4">
                     <ResourceToggle id={item.id} isPublished={item.isPublished} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/resources/${item.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        編集
+                      </Link>
+                      <ResourceDeleteButton id={item.id} title={item.title} />
+                    </div>
                   </td>
                 </tr>
               ))}

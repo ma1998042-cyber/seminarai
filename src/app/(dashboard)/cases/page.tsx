@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Plus, Briefcase } from "lucide-react";
+import { Plus, Briefcase, Pencil, Trash2 } from "lucide-react";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getCaseStudies } from "@/lib/db/queries/caseStudies";
 import CaseStudyToggle from "./CaseStudyToggle";
+import CaseStudyDeleteButton from "./CaseStudyDeleteButton";
 
 export default async function CasesListPage() {
   const auth = getAuth();
@@ -59,6 +60,9 @@ export default async function CasesListPage() {
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   公開
                 </th>
+                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -83,6 +87,18 @@ export default async function CasesListPage() {
                   </td>
                   <td className="px-6 py-4">
                     <CaseStudyToggle id={cs.id} isPublished={cs.isPublished} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/cases/${cs.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        編集
+                      </Link>
+                      <CaseStudyDeleteButton id={cs.id} title={cs.title} />
+                    </div>
                   </td>
                 </tr>
               ))}
