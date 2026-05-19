@@ -20,6 +20,7 @@ interface Survey {
   description: string | null;
   thank_you_message: string | null;
   is_anonymous: boolean;
+  category: string;
   payment_enabled: boolean;
   payment_amount: number;
 }
@@ -64,7 +65,7 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
     setSubmitting(true);
     setError("");
 
-    if (survey.payment_enabled && survey.payment_amount > 0) {
+    if (survey.payment_enabled && survey.payment_amount > 0 && survey.category !== "post_event") {
       // Redirect to Stripe Checkout
       const res = await fetch("/api/stripe/survey-checkout", {
         method: "POST",
@@ -123,7 +124,7 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
           {survey.description && (
             <p className="text-gray-500 leading-relaxed">{survey.description}</p>
           )}
-          {survey.payment_enabled && survey.payment_amount > 0 && (
+          {survey.payment_enabled && survey.payment_amount > 0 && survey.category !== "post_event" && (
             <div className="mt-4 flex items-center gap-2 bg-indigo-50 rounded-xl px-4 py-3">
               <CreditCard className="w-4 h-4 text-indigo-600 flex-shrink-0" />
               <p className="text-sm font-medium text-indigo-700">
@@ -269,7 +270,7 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
             className="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
           >
             {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
-            {survey.payment_enabled && survey.payment_amount > 0 ? (
+            {survey.payment_enabled && survey.payment_amount > 0 && survey.category !== "post_event" ? (
               <>
                 <CreditCard className="w-5 h-5" />
                 回答して決済へ進む（¥{survey.payment_amount.toLocaleString()}）

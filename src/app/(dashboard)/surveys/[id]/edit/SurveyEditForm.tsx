@@ -81,6 +81,7 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isAutoCreated = ["pre_event", "post_event"].includes(initial.category);
+  const isPostEvent = category === "post_event";
 
   const createQuestion = (type: QuestionType): Question => ({
     id: Math.random().toString(36).substr(2, 9),
@@ -193,38 +194,40 @@ export default function SurveyEditForm({ surveyId, hasEvent, initial }: { survey
           />
           <p className="text-xs text-gray-400 mt-1">未設定の場合は期限なしになります</p>
         </div>
-        <div className="border border-gray-100 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">参加費決済（Stripe）</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPaymentEnabled(!paymentEnabled)}
-              className={cn("relative w-11 h-6 rounded-full transition-colors", paymentEnabled ? "bg-indigo-600" : "bg-gray-200")}
-            >
-              <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform", paymentEnabled ? "translate-x-5" : "translate-x-0")} />
-            </button>
-          </div>
-          {paymentEnabled && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">参加費金額（円）</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
-                <input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  min="50"
-                  className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="3000"
-                />
+        {!isPostEvent && (
+          <div className="border border-gray-100 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-medium text-gray-700">参加費決済（Stripe）</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">回答送信後にStripe決済画面へ遷移します</p>
+              <button
+                type="button"
+                onClick={() => setPaymentEnabled(!paymentEnabled)}
+                className={cn("relative w-11 h-6 rounded-full transition-colors", paymentEnabled ? "bg-indigo-600" : "bg-gray-200")}
+              >
+                <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform", paymentEnabled ? "translate-x-5" : "translate-x-0")} />
+              </button>
             </div>
-          )}
-        </div>
+            {paymentEnabled && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">参加費金額（円）</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">¥</span>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    min="50"
+                    className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="3000"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">回答送信後にStripe決済画面へ遷移します</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 完了メール設定 */}

@@ -62,6 +62,7 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ s
         description: survey.description ?? null,
         thank_you_message: survey.thankYouMessage ?? null,
         is_anonymous: survey.isAnonymous ?? false,
+        category: survey.category ?? "general",
         payment_enabled: survey.paymentEnabled ?? false,
         payment_amount: survey.paymentAmount ?? 0,
       }}
