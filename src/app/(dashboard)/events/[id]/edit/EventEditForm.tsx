@@ -33,6 +33,8 @@ type EventData = {
   imageUrls: string[];
   showRemainingCapacity: number;
   participationRequirements: string | null;
+  recommendedFor: string | null;
+  participationBenefits: string | null;
   registrationDeadline: string | null;
   reminderEnabled: number;
   reminderDays: string;
@@ -75,6 +77,8 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
     visibility: event.visibility,
     show_remaining_capacity: event.showRemainingCapacity === 1,
     participation_requirements: event.participationRequirements || "",
+    recommended_for: event.recommendedFor || "",
+    participation_benefits: event.participationBenefits || "",
     registration_deadline: event.registrationDeadline || "",
     reminder_enabled: event.reminderEnabled === 1,
     reminder_days: (() => {
@@ -151,6 +155,8 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
       image_urls: imageUrls,
       show_remaining_capacity: form.show_remaining_capacity,
       participation_requirements: form.participation_requirements,
+      recommended_for: form.recommended_for,
+      participation_benefits: form.participation_benefits,
       registration_deadline: form.registration_deadline,
       reminder_enabled: form.reminder_enabled,
       reminder_days: form.reminder_days,
@@ -200,11 +206,23 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">説明</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">イベント概要</label>
           <textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
+            placeholder="イベントの概要・詳細を入力してください"
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">こんな人におすすめ</label>
+          <textarea
+            value={form.recommended_for}
+            onChange={(e) => setForm({ ...form, recommended_for: e.target.value })}
+            rows={2}
+            placeholder="例: マーケティング初心者の方、集客に悩んでいる方"
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
           />
         </div>
@@ -216,6 +234,17 @@ export default function EventEditForm({ event, hasRegistrationSurvey, eventSurve
             onChange={(e) => setForm({ ...form, participation_requirements: e.target.value })}
             rows={2}
             placeholder="例: PC持参必須、Python基礎知識がある方"
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">参加特典</label>
+          <textarea
+            value={form.participation_benefits}
+            onChange={(e) => setForm({ ...form, participation_benefits: e.target.value })}
+            rows={2}
+            placeholder="例: セミナー資料プレゼント、個別相談会への参加権"
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
           />
         </div>

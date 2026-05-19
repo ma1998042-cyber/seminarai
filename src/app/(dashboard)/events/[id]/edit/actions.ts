@@ -25,6 +25,8 @@ export async function updateEventAction(eventId: string, form: {
   image_urls: string[]
   show_remaining_capacity: boolean
   participation_requirements: string
+  recommended_for: string
+  participation_benefits: string
   registration_deadline: string
   reminder_enabled: boolean
   reminder_days: number[]
@@ -60,6 +62,8 @@ export async function updateEventAction(eventId: string, form: {
     imageUrls: form.image_urls.length > 0 ? form.image_urls : (form.thumbnail_url ? [form.thumbnail_url] : []),
     showRemainingCapacity: form.show_remaining_capacity ? 1 : 0,
     participationRequirements: form.participation_requirements || null,
+    recommendedFor: form.recommended_for || null,
+    participationBenefits: form.participation_benefits || null,
     registrationDeadline: form.registration_deadline || null,
     reminderEnabled: form.reminder_enabled ? 1 : 0,
     reminderDays: JSON.stringify(form.reminder_days),
