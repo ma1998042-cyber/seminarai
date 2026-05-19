@@ -599,6 +599,23 @@ export const caseStudies = sqliteTable("case_studies", {
 ]);
 
 // =============================================
+// RESOURCES (お役立ち資料)
+// =============================================
+export const resources = sqliteTable("resources", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_resources_org").on(table.organizationId),
+]);
+
+// =============================================
 // ADMIN_USERS (SaaS管理者)
 // =============================================
 export const adminUsers = sqliteTable("admin_users", {
@@ -633,6 +650,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   blogPosts: many(blogPosts),
   blogCategories: many(blogCategories),
   caseStudies: many(caseStudies),
+  resources: many(resources),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -776,4 +794,8 @@ export const blogPostCategoriesRelations = relations(blogPostCategories, ({ one 
 
 export const caseStudiesRelations = relations(caseStudies, ({ one }) => ({
   organization: one(organizations, { fields: [caseStudies.organizationId], references: [organizations.id] }),
+}));
+
+export const resourcesRelations = relations(resources, ({ one }) => ({
+  organization: one(organizations, { fields: [resources.organizationId], references: [organizations.id] }),
 }));
