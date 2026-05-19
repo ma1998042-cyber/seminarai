@@ -54,7 +54,7 @@ export default async function BlogPostPage({ params }: Props) {
       <article className="max-w-3xl mx-auto">
         {/* 戻るリンク */}
         <Link
-          href="/blog"
+          href="/articles"
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -78,7 +78,7 @@ export default async function BlogPostPage({ params }: Props) {
             {categories.map((cat: { name: string; slug: string }) => (
               <Link
                 key={cat.slug}
-                href={`/blog/category/${cat.slug}`}
+                href={`/articles/category/${cat.slug}`}
                 className="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100 transition-colors"
               >
                 {cat.name}

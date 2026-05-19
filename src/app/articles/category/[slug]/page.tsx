@@ -1,24 +1,39 @@
 import Link from "next/link";
 import { getDbFromContext } from "@/lib/db";
-import { getAllPublishedBlogPosts } from "@/lib/db/queries/blogPosts";
-import { FileText } from "lucide-react";
+import { getPublishedBlogPostsByCategory } from "@/lib/db/queries/blogPosts";
+import { FileText, ArrowLeft } from "lucide-react";
 
-export const metadata = {
-  title: "ブログ",
-  description: "最新の記事をご覧ください",
+type Props = {
+  params: Promise<{ slug: string }>;
 };
 
-export default async function BlogListPage() {
+export default async function BlogCategoryPage({ params }: Props) {
+  const { slug } = await params;
   const db = getDbFromContext();
-  const posts = await getAllPublishedBlogPosts(db);
+  const { posts, categoryName } = await getPublishedBlogPostsByCategory(db, slug);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-5xl mx-auto">
+        {/* 戻るリンク */}
+        <Link
+          href="/articles"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          ブログ一覧に戻る
+        </Link>
+
         {/* ヘッダー */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">ブログ</h1>
-          <p className="text-gray-500">最新の記事をご覧ください</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {categoryName ? `${categoryName}` : "カテゴリ"}
+          </h1>
+          <p className="text-gray-500">
+            {categoryName
+              ? `「${categoryName}」カテゴリの記事一覧`
+              : "該当カテゴリの記事一覧"}
+          </p>
         </div>
 
         {posts.length === 0 ? (
@@ -27,7 +42,7 @@ export default async function BlogListPage() {
               <FileText className="w-8 h-8 text-gray-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-700 mb-2">
-              まだ記事がありません
+              このカテゴリの記事はまだありません
             </h2>
             <p className="text-gray-400">
               新しい記事が公開されるまでお待ちください
@@ -43,7 +58,7 @@ export default async function BlogListPage() {
               return (
                 <Link
                   key={post.id}
-                  href={`/blog/${post.slug}`}
+                  href={`/articles/${post.slug}`}
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                 >
                   {/* サムネイル */}
