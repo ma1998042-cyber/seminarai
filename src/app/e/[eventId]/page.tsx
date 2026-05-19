@@ -4,7 +4,7 @@ import { getPublicEvent } from "@/lib/db/queries/events";
 import { surveys, surveyQuestions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
-import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock, ArrowLeft } from "lucide-react";
+import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock, ArrowLeft, UserCheck, Gift } from "lucide-react";
 import EventRegistrationForm from "./EventRegistrationForm";
 import ImageCarousel from "./ImageCarousel";
 
@@ -141,14 +141,28 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
               )}
             </div>
 
-            {/* 説明 */}
+            {/* イベント概要 */}
             {event.description && (
               <div className="mt-6 pt-6 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">イベント概要</h3>
                 <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{event.description}</p>
               </div>
             )}
           </div>
         </div>
+
+        {/* こんな人におすすめ */}
+        {event.recommendedFor && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <UserCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-800 mb-1">こんな人におすすめ</h3>
+                <p className="text-sm text-blue-700 whitespace-pre-wrap">{event.recommendedFor}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 参加条件 */}
         {event.participationRequirements && (
@@ -158,6 +172,19 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
               <div>
                 <h3 className="text-sm font-semibold text-amber-800 mb-1">参加条件</h3>
                 <p className="text-sm text-amber-700 whitespace-pre-wrap">{event.participationRequirements}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 参加特典 */}
+        {event.participationBenefits && (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6">
+            <div className="flex items-start gap-3">
+              <Gift className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-green-800 mb-1">参加特典</h3>
+                <p className="text-sm text-green-700 whitespace-pre-wrap">{event.participationBenefits}</p>
               </div>
             </div>
           </div>
