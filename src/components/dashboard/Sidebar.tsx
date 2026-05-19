@@ -41,6 +41,7 @@ const settingsItems = [
   { href: "/settings/members", icon: Users, label: "メンバー" },
   { href: "/settings/statuses", icon: CircleDot, label: "ステータス管理" },
   { href: "/settings/banners", icon: ImageIcon, label: "バナー管理" },
+  { href: "/settings/calendar", icon: CalendarDays, label: "カレンダー連携" },
   { href: "/settings/billing", icon: CreditCard, label: "プラン・課金" },
   { href: "/settings/profile", icon: UserCircle, label: "プロフィール" },
 ];

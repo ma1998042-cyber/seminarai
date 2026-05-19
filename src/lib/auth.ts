@@ -23,6 +23,15 @@ export function getAuth() {
       provider: "sqlite",
       schema: authSchema,
     }),
+    socialProviders: {
+      google: {
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+        accessType: "offline",
+        prompt: "consent",
+        scope: ["https://www.googleapis.com/auth/calendar.freebusy"],
+      },
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
