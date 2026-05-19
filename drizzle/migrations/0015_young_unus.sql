@@ -79,7 +79,4 @@ CREATE TABLE `lp_submissions` (
 );
 --> statement-breakpoint
 CREATE INDEX `idx_lp_submissions_lp` ON `lp_submissions` (`landing_page_id`);--> statement-breakpoint
-CREATE INDEX `idx_lp_submissions_customer` ON `lp_submissions` (`customer_id`);--> statement-breakpoint
-ALTER TABLE `events` ADD `reminder_subject` text;--> statement-breakpoint
-ALTER TABLE `events` ADD `reminder_body` text;--> statement-breakpoint
-ALTER TABLE `surveys` ADD `completion_email_enabled` integer DEFAULT false NOT NULL;
+CREATE INDEX `idx_lp_submissions_customer` ON `lp_submissions` (`customer_id`);
