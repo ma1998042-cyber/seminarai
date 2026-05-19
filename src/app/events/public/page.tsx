@@ -1,22 +1,27 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getDbFromContext } from "@/lib/db";
 import { getPublicEvents } from "@/lib/db/queries/events";
 import { getActiveBanners } from "@/lib/db/queries/banners";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, EVENT_TYPE_LABELS } from "@/lib/utils";
 import { CalendarDays, MapPin, Globe, Users, Clock } from "lucide-react";
+import EventFilters from "./EventFilters";
 
 export default async function PublicEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; type?: string; q?: string }>;
 }) {
   const params = await searchParams;
   const monthFilter = params.month === "current" || params.month === "next" ? params.month : undefined;
+  const eventType = params.type || undefined;
+  const q = params.q || undefined;
   const db = getDbFromContext();
-  const [events, banners] = await Promise.all([
-    getPublicEvents(db, { month: monthFilter }),
+  const [events, allBanners] = await Promise.all([
+    getPublicEvents(db, { month: monthFilter, eventType, q }),
     getActiveBanners(db),
   ]);
+  const banners = allBanners.slice(0, 2);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -28,7 +33,7 @@ export default async function PublicEventsPage({
         </div>
 
         {/* 月別フィルタ */}
-        <div className="flex justify-center gap-2 mb-8">
+        <div className="flex justify-center gap-2 mb-4">
           <Link
             href="/events/public"
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -61,6 +66,11 @@ export default async function PublicEventsPage({
           </Link>
         </div>
 
+        {/* 検索 + イベント種類フィルタ */}
+        <Suspense fallback={null}>
+          <EventFilters />
+        </Suspense>
+
         {/* 2カラムレイアウト: イベント一覧 + バナーサイドバー */}
         <div className="flex gap-8">
           {/* メインコンテンツ: イベント一覧 */}
@@ -80,6 +90,7 @@ export default async function PublicEventsPage({
                   const isDeadlineExpired = event.registrationDeadline
                     ? new Date(event.registrationDeadline) < new Date()
                     : false;
+                  const isSoldOut = isFull || isDeadlineExpired;
 
                   return (
                     <Link
@@ -87,16 +98,35 @@ export default async function PublicEventsPage({
                       href={`/e/${event.id}`}
                       className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                     >
-                      {/* サムネイル */}
+                      {/* サムネイル + 完売御礼オーバーレイ */}
                       {(() => {
                         const thumb = event.thumbnailUrl || ((event.imageUrls as string[] | null)?.[0]);
-                        return thumb ? (
-                          <div className="w-full aspect-video bg-gray-100">
-                            <img src={thumb} alt={event.title} className="w-full h-full object-contain" />
-                          </div>
-                        ) : (
-                          <div className="w-full aspect-video bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
-                            <CalendarDays className="w-12 h-12 text-indigo-200" />
+                        return (
+                          <div className="relative w-full aspect-video bg-gray-100">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt={event.title}
+                                className={`w-full h-full object-contain ${isSoldOut ? "grayscale" : ""}`}
+                              />
+                            ) : (
+                              <div className={`w-full h-full bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center ${isSoldOut ? "grayscale" : ""}`}>
+                                <CalendarDays className="w-12 h-12 text-indigo-200" />
+                              </div>
+                            )}
+                            {isSoldOut && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <span className="text-2xl font-bold text-red-500 bg-white/90 px-4 py-2 rounded-lg border-2 border-red-500 tracking-wider">
+                                  完売御礼
+                                </span>
+                              </div>
+                            )}
+                            {/* イベント種類バッジ */}
+                            {event.eventType && event.eventType !== "other" && (
+                              <span className="absolute top-2 left-2 bg-white/90 text-gray-700 text-xs font-medium px-2 py-1 rounded-full">
+                                {EVENT_TYPE_LABELS[event.eventType] || event.eventType}
+                              </span>
+                            )}
                           </div>
                         );
                       })()}
@@ -129,25 +159,18 @@ export default async function PublicEventsPage({
                             </div>
                           )}
 
-                          {/* 残席 */}
-                          {event.showRemainingCapacity === 1 && event.capacity != null && (
+                          {/* 残席 / 完売御礼 */}
+                          {isSoldOut ? (
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-red-400 flex-shrink-0" />
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">完売御礼</span>
+                            </div>
+                          ) : event.showRemainingCapacity === 1 && event.capacity != null ? (
                             <div className="flex items-center gap-2">
                               <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              {isFull ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">満席</span>
-                              ) : (
-                                <span>あと{event.capacity - event.registrationCount}名</span>
-                              )}
+                              <span>あと{event.capacity - event.registrationCount}名</span>
                             </div>
-                          )}
-
-                          {/* 申し込み期限バッジ */}
-                          {isDeadlineExpired && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-red-400 flex-shrink-0" />
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">申し込み終了</span>
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </Link>

@@ -1,4 +1,4 @@
-import { eq, and, sql, inArray, gte, lt, asc } from "drizzle-orm";
+import { eq, and, sql, inArray, gte, lt, asc, like } from "drizzle-orm";
 import { events, eventRegistrations, customers } from "../schema";
 import type { Database } from "..";
 
@@ -139,7 +139,7 @@ export async function updateEvent(
 
 export async function getPublicEvents(
   db: Database,
-  options?: { month?: "current" | "next" },
+  options?: { month?: "current" | "next"; eventType?: string; q?: string },
 ) {
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const conditions = [
@@ -147,6 +147,14 @@ export async function getPublicEvents(
     eq(events.status, "active"),
     gte(events.startDate, today),
   ];
+
+  if (options?.eventType) {
+    conditions.push(eq(events.eventType, options.eventType));
+  }
+
+  if (options?.q) {
+    conditions.push(like(events.title, `%${options.q}%`));
+  }
 
   if (options?.month) {
     const now = new Date();
