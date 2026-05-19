@@ -1,4 +1,4 @@
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, inArray } from "drizzle-orm";
 import { blogPosts, blogCategories, blogPostCategories } from "../schema";
 import type { Database } from "..";
 
@@ -38,6 +38,57 @@ export async function getPublishedBlogPostBySlug(db: Database, orgId: string, sl
     ),
     with: { postCategories: { with: { category: true } }, author: true },
   });
+}
+
+// =============================================
+// Public (組織横断) クエリ
+// =============================================
+
+export async function getAllPublishedBlogPosts(db: Database) {
+  return db.query.blogPosts.findMany({
+    where: eq(blogPosts.status, "published"),
+    with: { postCategories: { with: { category: true } }, author: true },
+    orderBy: [desc(blogPosts.publishedAt)],
+  });
+}
+
+export async function getPublishedBlogPostBySlugPublic(db: Database, slug: string) {
+  return db.query.blogPosts.findFirst({
+    where: and(eq(blogPosts.slug, slug), eq(blogPosts.status, "published")),
+    with: { postCategories: { with: { category: true } }, author: true },
+  });
+}
+
+export async function getPublishedBlogPostsByCategory(db: Database, categorySlug: string) {
+  // まずカテゴリslugに一致する全カテゴリを取得（組織横断）
+  const categories = await db.query.blogCategories.findMany({
+    where: eq(blogCategories.slug, categorySlug),
+  });
+  if (categories.length === 0) return { posts: [], categoryName: null };
+
+  const categoryIds = categories.map((c) => c.id);
+  const categoryName = categories[0].name;
+
+  // 中間テーブルから対象postIdを取得
+  const links = await db
+    .select({ postId: blogPostCategories.postId })
+    .from(blogPostCategories)
+    .where(inArray(blogPostCategories.categoryId, categoryIds));
+
+  if (links.length === 0) return { posts: [], categoryName };
+
+  const postIds = [...new Set(links.map((l) => l.postId))];
+
+  const posts = await db.query.blogPosts.findMany({
+    where: and(
+      eq(blogPosts.status, "published"),
+      inArray(blogPosts.id, postIds),
+    ),
+    with: { postCategories: { with: { category: true } }, author: true },
+    orderBy: [desc(blogPosts.publishedAt)],
+  });
+
+  return { posts, categoryName };
 }
 
 export async function createBlogPost(
