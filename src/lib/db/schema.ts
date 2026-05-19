@@ -483,6 +483,100 @@ export const banners = sqliteTable("banners", {
 ]);
 
 // =============================================
+// LANDING_PAGES (ランディングページ)
+// =============================================
+export const landingPages = sqliteTable("landing_pages", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description"),
+  bodyHtml: text("body_html"),
+  heroImageUrl: text("hero_image_url"),
+  formFields: text("form_fields", { mode: "json" }).notNull().$type<{ name: string; label: string; type: string; required: boolean; options?: string[] }[]>().default([]),
+  ctaText: text("cta_text").notNull().default("申し込む"),
+  thankYouMessage: text("thank_you_message"),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
+  publishedAt: text("published_at"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  ogImageUrl: text("og_image_url"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_landing_pages_org").on(table.organizationId),
+  uniqueIndex("landing_pages_slug_unique").on(table.slug),
+]);
+
+// =============================================
+// LP_SUBMISSIONS (LP申し込み)
+// =============================================
+export const lpSubmissions = sqliteTable("lp_submissions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  landingPageId: text("landing_page_id").notNull().references(() => landingPages.id, { onDelete: "cascade" }),
+  customerId: text("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  data: text("data", { mode: "json" }).notNull().$type<Record<string, unknown>>(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_lp_submissions_lp").on(table.landingPageId),
+  index("idx_lp_submissions_customer").on(table.customerId),
+]);
+
+// =============================================
+// BLOG_CATEGORIES (ブログカテゴリ)
+// =============================================
+export const blogCategories = sqliteTable("blog_categories", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_blog_categories_org").on(table.organizationId),
+  uniqueIndex("blog_categories_org_slug_unique").on(table.organizationId, table.slug),
+]);
+
+// =============================================
+// BLOG_POSTS (ブログ記事)
+// =============================================
+export const blogPosts = sqliteTable("blog_posts", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  bodyHtml: text("body_html"),
+  excerpt: text("excerpt"),
+  thumbnailUrl: text("thumbnail_url"),
+  status: text("status").notNull().default("draft"),
+  publishedAt: text("published_at"),
+  authorId: text("author_id").references(() => userProfiles.id, { onDelete: "set null" }),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  ogImageUrl: text("og_image_url"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_blog_posts_org").on(table.organizationId),
+  index("idx_blog_posts_status").on(table.organizationId, table.status),
+  uniqueIndex("blog_posts_org_slug_unique").on(table.organizationId, table.slug),
+]);
+
+// =============================================
+// BLOG_POST_CATEGORIES (記事カテゴリ中間テーブル)
+// =============================================
+export const blogPostCategories = sqliteTable("blog_post_categories", {
+  postId: text("post_id").notNull().references(() => blogPosts.id, { onDelete: "cascade" }),
+  categoryId: text("category_id").notNull().references(() => blogCategories.id, { onDelete: "cascade" }),
+}, (table) => [
+  primaryKey({ columns: [table.postId, table.categoryId] }),
+  index("idx_blog_post_categories_post").on(table.postId),
+  index("idx_blog_post_categories_category").on(table.categoryId),
+]);
+
+// =============================================
 // ADMIN_USERS (SaaS管理者)
 // =============================================
 export const adminUsers = sqliteTable("admin_users", {
@@ -513,6 +607,9 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   usageLogs: many(usageLogs),
   banners: many(banners),
   customerStatuses: many(customerStatuses),
+  landingPages: many(landingPages),
+  blogPosts: many(blogPosts),
+  blogCategories: many(blogCategories),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -626,4 +723,30 @@ export const stepCampaignEnrollmentsRelations = relations(stepCampaignEnrollment
 
 export const bannersRelations = relations(banners, ({ one }) => ({
   organization: one(organizations, { fields: [banners.organizationId], references: [organizations.id] }),
+}));
+
+export const landingPagesRelations = relations(landingPages, ({ one, many }) => ({
+  organization: one(organizations, { fields: [landingPages.organizationId], references: [organizations.id] }),
+  submissions: many(lpSubmissions),
+}));
+
+export const lpSubmissionsRelations = relations(lpSubmissions, ({ one }) => ({
+  landingPage: one(landingPages, { fields: [lpSubmissions.landingPageId], references: [landingPages.id] }),
+  customer: one(customers, { fields: [lpSubmissions.customerId], references: [customers.id] }),
+}));
+
+export const blogCategoriesRelations = relations(blogCategories, ({ one, many }) => ({
+  organization: one(organizations, { fields: [blogCategories.organizationId], references: [organizations.id] }),
+  postCategories: many(blogPostCategories),
+}));
+
+export const blogPostsRelations = relations(blogPosts, ({ one, many }) => ({
+  organization: one(organizations, { fields: [blogPosts.organizationId], references: [organizations.id] }),
+  author: one(userProfiles, { fields: [blogPosts.authorId], references: [userProfiles.id] }),
+  postCategories: many(blogPostCategories),
+}));
+
+export const blogPostCategoriesRelations = relations(blogPostCategories, ({ one }) => ({
+  post: one(blogPosts, { fields: [blogPostCategories.postId], references: [blogPosts.id] }),
+  category: one(blogCategories, { fields: [blogPostCategories.categoryId], references: [blogCategories.id] }),
 }));
