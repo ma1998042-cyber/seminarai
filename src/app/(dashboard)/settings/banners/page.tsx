@@ -155,13 +155,17 @@ export default function BannersSettingsPage() {
           <p className="text-sm text-gray-500 mt-1">公開イベントページに表示するバナーを管理します</p>
         </div>
         {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            バナーを追加
-          </button>
+          banners.length >= 2 ? (
+            <span className="text-sm text-gray-500">バナーは最大2件まで登録できます</span>
+          ) : (
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              バナーを追加
+            </button>
+          )
         )}
       </div>
 

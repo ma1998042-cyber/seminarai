@@ -13,6 +13,7 @@ export async function getActiveBanners(db: Database) {
   return db.query.banners.findMany({
     where: eq(banners.isActive, true),
     orderBy: [asc(banners.sortOrder)],
+    limit: 2,
   });
 }
 
@@ -20,6 +21,7 @@ export async function getActiveBannersByOrg(db: Database, orgId: string) {
   return db.query.banners.findMany({
     where: and(eq(banners.organizationId, orgId), eq(banners.isActive, true)),
     orderBy: [asc(banners.sortOrder)],
+    limit: 2,
   });
 }
 
