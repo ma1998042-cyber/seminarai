@@ -607,12 +607,30 @@ export const resources = sqliteTable("resources", {
   title: text("title").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
+  fileUrl: text("file_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 }, (table) => [
   index("idx_resources_org").on(table.organizationId),
+]);
+
+// =============================================
+// RESOURCE_DOWNLOAD_LEADS (資料ダウンロードリード)
+// =============================================
+export const resourceDownloadLeads = sqliteTable("resource_download_leads", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  resourceId: text("resource_id").notNull().references(() => resources.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  proficiencyLevel: text("proficiency_level").notNull(),
+  goals: text("goals").notNull(),
+  jobDescription: text("job_description").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_download_leads_resource").on(table.resourceId),
+  index("idx_download_leads_email").on(table.email),
 ]);
 
 // =============================================
@@ -796,6 +814,11 @@ export const caseStudiesRelations = relations(caseStudies, ({ one }) => ({
   organization: one(organizations, { fields: [caseStudies.organizationId], references: [organizations.id] }),
 }));
 
-export const resourcesRelations = relations(resources, ({ one }) => ({
+export const resourcesRelations = relations(resources, ({ one, many }) => ({
   organization: one(organizations, { fields: [resources.organizationId], references: [organizations.id] }),
+  downloadLeads: many(resourceDownloadLeads),
+}));
+
+export const resourceDownloadLeadsRelations = relations(resourceDownloadLeads, ({ one }) => ({
+  resource: one(resources, { fields: [resourceDownloadLeads.resourceId], references: [resources.id] }),
 }));
