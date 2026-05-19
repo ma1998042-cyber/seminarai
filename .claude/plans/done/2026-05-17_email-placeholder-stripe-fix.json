@@ -1,0 +1,29 @@
+{
+  "goal": "メールテンプレート変数置換 & アンケートStripe設定保存修正",
+  "created": "2026-05-17T12:00:00",
+  "completed": "2026-05-17T12:35:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "メール送信時に{{name}}等のプレースホルダーを顧客名に置換する処理を追加",
+      "description": "src/lib/email/send-campaign.ts の sendCampaignEmails 関数で、メール送信前に bodyHtml 内の {{name}} を recipient の顧客名に置換する処理を追加する。\n\n手順:\n1. resolveTargetEmails の返り値に name (fullName) を含めるよう修正（customers テーブルから fullName を取得）\n2. sendCampaignEmails のループ内で、送信前に bodyHtml の {{name}} を recipient.name || '' に置換する関数を作成\n3. src/app/(dashboard)/campaigns/[id]/actions.ts の即時送信ロジック（164行目付近）にも同様の置換処理を追加\n4. src/app/api/cron/process-sequences/route.ts のシーケンス送信にも同様に対応が必要か確認\n\n注意: name が null/空の場合は空文字に置換して「様」だけにならないよう、「{{name}}様」パターンでは名前がない場合に「様」ごと除去するか、フォールバック値を検討する",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "send-campaign.ts: resolveTargetEmails は { email, customerId } を返す。customers テーブルに fullName カラムあり。campaigns/[id]/actions.ts にも即時送信ロジックあり。cron/process-sequences にもシーケンスメール送信あり。"
+    },
+    {
+      "id": 2,
+      "title": "アンケート編集時にpayment_enabled/payment_amountをDBに保存する修正",
+      "description": "src/app/(dashboard)/surveys/[id]/edit/actions.ts の updateSurvey 関数で、updateSurveyDb 呼び出し時に paymentEnabled と paymentAmount を渡すよう修正する。\n\n手順:\n1. src/lib/db/queries/surveys.ts の updateSurvey の型定義に paymentEnabled: boolean と paymentAmount: number を追加\n2. src/app/(dashboard)/surveys/[id]/edit/actions.ts の41-48行目で updateSurveyDb に paymentEnabled: data.payment_enabled ?? false, paymentAmount: data.payment_amount ?? 0 を追加\n\nスキーマ: surveys テーブルに paymentEnabled (integer, boolean mode) カラムは既に存在する（schema.ts:237）。paymentAmount カラムも確認して追加する。",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "surveys/[id]/edit/actions.ts:41-48 で updateSurveyDb を呼ぶ際に payment 関連フィールドを渡していない。DB queries/surveys.ts の updateSurvey の Partial 型に paymentEnabled/paymentAmount がない。schema.ts:237 に paymentEnabled カラムあり。"
+    }
+  ]
+}

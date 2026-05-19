@@ -5,9 +5,9 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/cases", label: "事例一覧" },
+  { href: "/case-studies", label: "事例一覧" },
   { href: "/articles", label: "ブログ" },
-  { href: "/resources", label: "お役立ち資料" },
+  { href: "/materials", label: "お役立ち資料" },
   { href: "/about", label: "運営者情報" },
 ] as const;
 

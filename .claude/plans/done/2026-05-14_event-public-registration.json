@@ -1,0 +1,84 @@
+{
+  "goal": "イベント公開管理・公開ページ・申し込み機能・アンケート属性タグ・顧客管理連携・詳細画面修正",
+  "created": "2026-05-14T16:00:00",
+  "completed": "2026-05-14T17:15:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "DBスキーマ拡張（イベントvisibility + アンケートcategory属性タグ）",
+      "description": "eventsテーブルにvisibilityカラム（public/unlisted/draft、デフォルトdraft）を追加。surveysテーブルにcategoryカラム（registration/pre_event/post_event/general、デフォルトgeneral）を追加。Drizzleスキーマ（src/lib/db/schema.ts）を編集し、npx drizzle-kit generateでマイグレーションを生成する。関連するTypeScript型定義も更新する。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "Drizzle ORM + SQLite (Cloudflare D1)。スキーマファイル: src/lib/db/schema.ts。eventsテーブルはL100付近、surveysテーブルはL201付近。マイグレーション生成: npx drizzle-kit generate"
+    },
+    {
+      "id": 2,
+      "title": "イベント管理画面にvisibilityタブ（一般公開/限定公開/下書き）を追加",
+      "description": "src/app/(dashboard)/events/page.tsxにタブUI（一般公開/限定公開/下書き）を追加し、visibilityでフィルタリングする。イベント作成フォーム（src/app/(dashboard)/events/new/page.tsx, actions.ts）と詳細ページにvisibility選択UIを追加。src/lib/utils.tsにEVENT_VISIBILITY_LABELSを追加。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [1],
+      "size": "M",
+      "status": "done",
+      "context_summary": "Next.js App Router。イベント一覧: src/app/(dashboard)/events/page.tsx。新規作成: events/new/。詳細: events/[id]/page.tsx。クエリ: src/lib/db/queries/events.ts。UIはTailwind CSS + lucide-react。"
+    },
+    {
+      "id": 3,
+      "title": "イベント公開ページ（/e/[eventId]）作成 + 申し込みフォーム",
+      "description": "src/app/e/[eventId]/page.tsxに認証不要の公開ページを作成。イベント詳細（タイトル、日時、場所、説明、サムネイル）を表示し、申し込みフォーム（名前、メール）を設置。申し込み時にevent_registrationsとcustomersテーブルにupsertする。visibilityがpublicまたはunlistedのactiveイベントのみ表示。middlewareの公開ルートに/e/を追加。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [1],
+      "size": "L",
+      "status": "done",
+      "context_summary": "公開アンケートページの実装パターンを参考に: src/app/s/[surveyId]/page.tsx + SurveyForm.tsx。middleware.tsで/s/を公開ルートとして許可済み。event_registrations: schema.ts L184。customers: schema.ts L129。DB操作: src/lib/db/queries/events.ts"
+    },
+    {
+      "id": 4,
+      "title": "公開済みイベント一覧ページ（/events/public）",
+      "description": "src/app/events/public/page.tsxに認証不要のページを作成。今日以降でvisibility=publicかつstatus=activeのイベント一覧をカード形式で表示。各カードから/e/[eventId]にリンク。middlewareの公開ルートに/events/publicを追加。レスポンシブデザイン。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [1, 3],
+      "size": "M",
+      "status": "done",
+      "context_summary": "公開ページなので認証不要。ランディングページ（src/app/page.tsx）のデザインテイストに合わせる。middleware.tsで公開ルート追加が必要。イベントクエリ: src/lib/db/queries/events.ts"
+    },
+    {
+      "id": 5,
+      "title": "アンケートに属性タグ（事前/事後/申し込み）追加 + 申し込みアンケート連携",
+      "description": "アンケート作成/編集UI（src/app/(dashboard)/surveys/new/, surveys/[id]/edit/）にcategory選択（申し込み/事前/事後/一般）を追加。category=registrationのアンケートが回答されたとき、回答者情報をevent_registrationsとcustomersにも登録する処理をsrc/app/s/[surveyId]/のsubmitアクションに追加。イベント詳細ページで関連アンケートにカテゴリバッジを表示。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [1],
+      "size": "M",
+      "status": "done",
+      "context_summary": "アンケート作成: src/app/(dashboard)/surveys/new/。編集: surveys/[id]/edit/SurveyEditForm.tsx, actions.ts。公開フォーム: src/app/s/[surveyId]/SurveyForm.tsx。回答送信のServer Action: surveys/[id]内またはs/[surveyId]内。DB: src/lib/db/queries/surveys.ts"
+    },
+    {
+      "id": 6,
+      "title": "顧客管理にアンケート回答データ表示を追加",
+      "description": "顧客詳細ページ（src/app/(dashboard)/customers/[id]/page.tsx）に「アンケート回答履歴」セクションを追加。survey_responsesテーブルからrespondentEmailで顧客のメールと照合し、回答一覧（アンケート名、回答日、リンク）を表示。顧客一覧ページでもアンケート回答数を表示。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [5],
+      "size": "M",
+      "status": "done",
+      "context_summary": "顧客詳細: src/app/(dashboard)/customers/[id]/page.tsx。顧客クエリ: src/lib/db/queries/customers.ts。survey_responses: schema.ts L243。respondentEmailで照合。"
+    },
+    {
+      "id": 7,
+      "title": "各詳細画面の動作確認・修正（イベント編集ページ作成含む）",
+      "description": "イベント編集ページ（/events/[id]/edit）が存在しないので作成。イベント詳細ページのeditリンクが機能するようにする。アンケート詳細・顧客詳細ページが正しく表示されるか確認し、問題があれば修正。全詳細画面のリンク整合性を確認。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [1, 2, 3, 4, 5, 6],
+      "size": "M",
+      "status": "done",
+      "context_summary": "イベント詳細: src/app/(dashboard)/events/[id]/page.tsx（L77でeditリンクあり）。events/[id]/edit/は未作成。アンケート詳細: surveys/[id]/page.tsx。顧客詳細: customers/[id]/page.tsx。"
+    }
+  ]
+}

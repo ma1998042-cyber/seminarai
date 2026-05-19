@@ -1,0 +1,20 @@
+{
+  "goal": "Supabase依存を排除し、Cloudflare D1 (SQLite) + Cloudflare Pages で完結するアーキテクチャに移行",
+  "created": "2026-05-14T12:00:00",
+  "completed": "2026-05-14T14:45:00",
+  "tasks": [
+    { "id": 1, "title": "Cloudflare Pages + D1 の初期設定", "status": "done" },
+    { "id": 2, "title": "D1用SQLiteスキーマ + Drizzle ORMスキーマ定義", "status": "done" },
+    { "id": 3, "title": "Better Auth セットアップ", "status": "done" },
+    { "id": 4, "title": "データアクセス層の作成", "status": "done" },
+    { "id": 5, "title": "認証ミドルウェア書き換え", "status": "done" },
+    { "id": 6, "title": "認証ページ移行（login, register, callback）", "status": "done" },
+    { "id": 7, "title": "ダッシュボード・レイアウト・オンボーディングのDB呼び出し移行", "status": "done" },
+    { "id": 8, "title": "顧客管理のDB呼び出し移行", "status": "done" },
+    { "id": 9, "title": "アンケート管理のDB呼び出し移行", "status": "done" },
+    { "id": 10, "title": "イベント・キャンペーンのDB呼び出し移行", "status": "done" },
+    { "id": 11, "title": "設定・管理画面のDB呼び出し移行", "status": "done" },
+    { "id": 12, "title": "Stripe Webhook / Checkout のDB呼び出し移行", "status": "done" },
+    { "id": 13, "title": "Supabaseパッケージ完全削除・クリーンアップ・動作確認", "status": "done" }
+  ]
+}

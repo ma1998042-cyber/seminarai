@@ -1,0 +1,40 @@
+{
+  "goal": "イベント画像の縦長対応・アンケートURLコピー修正・アンケート回答時の顧客登録修正",
+  "created": "2026-05-14T18:00:00",
+  "completed": "2026-05-14T18:30:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "縦長画像でも綺麗に表示されるよう画像表示を改善",
+      "description": "現在すべての画像表示箇所で aspect-video (16:9) + object-cover を使用しており、縦長画像は左右が大きくカットされる。横長ベースの aspect-video コンテナは維持しつつ、縦長画像でも見栄えが良くなるよう改善する。object-cover のまま object-position: center を確保し、縦長画像の場合は背景色付きで object-contain にするか、もしくはコンテナ内で適切にフィットさせる方式を検討。対象ファイル: src/app/(dashboard)/events/new/page.tsx, src/app/(dashboard)/events/[id]/edit/EventEditForm.tsx, src/app/e/[eventId]/page.tsx, src/app/events/public/page.tsx",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "全箇所で aspect-video + object-cover。画像リサイズ処理なし。R2にそのまま保存。横長がベースなのは変わらずでOK。"
+    },
+    {
+      "id": 2,
+      "title": "アンケートURLのコピーボタンを機能させる",
+      "description": "src/app/(dashboard)/surveys/[id]/page.tsx の95行目付近にあるコピーボタンに onClick ハンドラがない。ページはサーバーコンポーネント(async関数)のため、URLコピー部分をクライアントコンポーネントに切り出す。navigator.clipboard.writeText(publicUrl) でクリップボードにコピーし、useToast() で成功フィードバックを表示する。既存の LinkSurveyButton.tsx パターンを参考にする。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "アンケート詳細: src/app/(dashboard)/surveys/[id]/page.tsx。ボタンは95行目付近。サーバーコンポーネントなのでクライアントコンポーネント切り出しが必要。toast: src/components/ui/toaster.tsx の useToast()。"
+    },
+    {
+      "id": 3,
+      "title": "全カテゴリのアンケート回答時に顧客レコードを作成する",
+      "description": "src/app/s/[surveyId]/actions.ts の submitSurveyResponse を修正。現在は category='registration' かつ eventId がある場合のみ顧客登録されるが、category に関わらず respondentEmail があれば customers テーブルに upsert するよう変更する。registration カテゴリ + eventId 時のみ eventRegistrations も作成する既存動作は維持。surveyResponses の customerId も全カテゴリで設定する。source は 'survey' とし、eventId があれば sourceEventId も記録する。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "アンケート回答処理: src/app/s/[surveyId]/actions.ts 行8-108。顧客テーブル: customers (schema.ts L132)。現在の顧客登録条件: category='registration' && eventId && respondentEmail。DB操作: drizzle ORM, src/lib/db/queries/customers.ts, surveys.ts"
+    }
+  ]
+}

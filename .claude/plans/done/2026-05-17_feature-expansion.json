@@ -1,0 +1,182 @@
+{
+  "goal": "SeminarFlow機能拡張（リマインド・公開ページ強化・AI提案・個別配信・アンケート改善・ステータス・メルマガ改善）",
+  "created": "2026-05-17T12:00:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "イベントリマインド配信機能（DB + cron + 管理画面設定）",
+      "description": "eventsテーブルにreminderEnabled(integer/boolean)とreminderDays(JSON配列、デフォルト[1,3])カラムを追加するマイグレーション作成。イベント編集画面(/events/[id])にリマインドON/OFFトグルと日数設定UIを追加。/api/cron/send-reminders エンドポイント新規作成: 毎日実行し、startDateが1日後・3日後のイベントでreminderEnabled=trueのものを検索、event_registrationsの参加者にリマインドメール送信。メール内容はイベント名・日時・場所を含むテンプレート。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "L",
+      "status": "pending",
+      "context_summary": "スキーマ: src/lib/db/schema.ts (eventsテーブルL100-128)。既存cron参考: src/app/api/cron/send-scheduled/route.ts。メール送信: src/lib/email/index.ts。イベント編集: src/app/(dashboard)/events/[id]/page.tsx"
+    },
+    {
+      "id": 2,
+      "title": "公開イベントページ：月別フィルタ機能",
+      "description": "src/app/events/public/page.tsxに月別フィルタUI追加。タブまたはドロップダウンで「全て/今月/来月」を切替。URLのsearchParams(?month=current|next)でフィルタ状態を保持。getPublicEvents関数にmonthフィルタパラメータを追加し、startDateで絞り込み。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "公開イベント一覧: src/app/events/public/page.tsx (103行)。クエリ関数: src/lib/db/queries/events.ts のgetPublicEvents。eventsテーブルのstartDateはtext型(datetime文字列)。"
+    },
+    {
+      "id": 3,
+      "title": "公開イベントページ：申し込み期限（イベント側deadline）",
+      "description": "eventsテーブルにregistrationDeadline(text, datetime形式)カラムを追加するマイグレーション作成。イベント編集画面に申し込み期限の日時入力フィールド追加。公開イベント詳細ページ(/e/[eventId])で期限切れの場合は「申し込み終了」と表示し登録フォームを非表示に。公開一覧でも期限切れイベントにバッジ表示。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "スキーマ: src/lib/db/schema.ts eventsテーブルL100-128。公開イベント詳細: src/app/e/[eventId]/page.tsx。マイグレーション例: drizzle/migrations/内の既存ファイル参照。"
+    },
+    {
+      "id": 4,
+      "title": "公開イベントページ：バナー管理機能（管理画面 + 表示）",
+      "description": "bannersテーブル新規作成(id, organizationId, title, imageUrl, linkUrl, sortOrder, isActive, createdAt)のマイグレーション追加。スキーマにbanners定義追加。管理画面に/settings/bannersページ新規作成: バナーの追加(画像アップロード+リンクURL)・削除・並替え・有効/無効切替。公開イベント一覧ページ(src/app/events/public/page.tsx)のレイアウトを2カラムに変更し、右サイドバーに正方形バナー(aspect-square)をリスト表示。バナークリックでlinkUrlに遷移。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "公開イベント一覧: src/app/events/public/page.tsx。画像アップロード既存API: src/app/api/upload/route.ts (R2保存)。画像配信: src/app/api/images/[...key]/route.ts。設定画面: src/app/(dashboard)/settings/。スキーマ: src/lib/db/schema.ts"
+    },
+    {
+      "id": 5,
+      "title": "公開イベント登録時のアンケート紐付け表示の改善",
+      "description": "公開イベント詳細ページ(/e/[eventId])の登録フォームを確認・改善。surveys.eventIdでイベントに紐付いたアンケートがある場合はそのアンケートの質問を表示して回答させる。紐付きアンケートがなければ名前+メールアドレスだけのシンプルフォームを表示。現状の実装を確認し、足りない部分を補完する。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "公開イベント詳細: src/app/e/[eventId]/page.tsx。surveys.eventIdでイベントとアンケートが紐付く。アンケート質問: survey_questionsテーブル。公開アンケートフォーム参考: src/app/s/[surveyId]/page.tsx"
+    },
+    {
+      "id": 6,
+      "title": "メール個別配信（チェックした顧客に送信）",
+      "description": "顧客一覧ページ(src/app/(dashboard)/customers/page.tsx)にチェックボックス列を追加。ヘッダーに全選択チェックボックス。選択状態をstate管理。「選択した顧客にメール送信」ボタンを追加し、クリックでキャンペーン新規作成画面(/campaigns/new)にtargetType=specific_customers&customerIds=xxx,yyyのクエリパラメータ付きで遷移。キャンペーン新規作成画面でこのパラメータを受け取り、targetTypeとtargetCustomerIdsにプリフィルする。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "顧客一覧: src/app/(dashboard)/customers/page.tsx。キャンペーン新規作成: src/app/(dashboard)/campaigns/new/page.tsx。email_campaignsスキーマにtargetCustomerIds(text/JSON)が既に存在。targetType='specific_customers'も既存。"
+    },
+    {
+      "id": 7,
+      "title": "ダッシュボード：今週の開封率・クリック率グラフ",
+      "description": "ダッシュボードページ(src/app/(dashboard)/dashboard/page.tsx)に直近7日間の開封率・クリック率の折れ線グラフセクション追加。email_sendsテーブルからsentAt日別にグループ化し、openedAt非null数/全数で開封率、clickedAt非null数/全数でクリック率を算出するクエリ関数作成。Rechartsライブラリ(既存確認、なければインストール)でLineChart描画。データがない日は0%表示。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "ダッシュボード: src/app/(dashboard)/dashboard/page.tsx。email_sendsスキーマ: src/lib/db/schema.ts L290付近(sentAt, openedAt, clickedAt カラム)。クエリ関数: src/lib/db/queries/campaigns.ts。package.json確認してrechartsの有無チェック。"
+    },
+    {
+      "id": 8,
+      "title": "Stripe決済の動作確認・設定整備",
+      "description": "既存のStripe実装を調査: (1) src/app/api/stripe/survey-checkout/route.ts の実装内容確認 (2) src/app/api/webhooks/stripe/route.ts のイベントハンドリング確認 (3) サブスクリプション課金フロー(settings/billing)の実装状態確認 (4) 環境変数(STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET等)の設定状況確認 (5) 不足している実装や設定があれば一覧化して報告。Stripeダッシュボードの設定手順も含める。",
+      "type": "research",
+      "agent": "gemini",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "Stripe関連ファイル: src/app/api/stripe/survey-checkout/route.ts, src/app/api/webhooks/stripe/route.ts, src/app/(dashboard)/settings/billing/page.tsx。スキーマ: plans, subscriptions, billing_historyテーブル。"
+    },
+    {
+      "id": 9,
+      "title": "AIによる顧客セグメント自動提案",
+      "description": "ダッシュボードまたは顧客管理画面に「AI提案」セクション新規追加。実装内容: (1) /api/ai/segment-suggestions エンドポイント作成 (2) 顧客データ(タグ分布、メール開封/クリック率、イベント参加履歴)を集計 (3) Claude API(Anthropic SDK)に集計データを投げて「このセグメントにはこういうメールが効きそう」という提案を生成 (4) レスポンスをカード形式でUI表示 (5) 提案カードから「このセグメントにメール送信」ボタンでキャンペーン作成画面に遷移。環境変数ANTHROPIC_API_KEYが必要。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "L",
+      "status": "pending",
+      "context_summary": "顧客スキーマ: customers, customer_tags, email_sends, event_registrations。ダッシュボード: src/app/(dashboard)/dashboard/page.tsx。Anthropic SDK: npm install @anthropic-ai/sdk。キャンペーン作成: /campaigns/new"
+    },
+    {
+      "id": 10,
+      "title": "アンケート：メールアドレス必須バリデーション",
+      "description": "公開アンケートフォーム(src/app/s/[surveyId]/page.tsx)でメールアドレス欄が空の場合に送信を拒否する。フロント側: メールアドレス入力欄にrequired属性追加+空の場合submitボタン無効化orバリデーションメッセージ表示。サーバー側: アンケート回答受付のServer Action/APIで、isAnonymous=falseの場合にemail未入力ならエラーレスポンス返却。isAnonymous=trueの場合はメールアドレス不要のまま。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "公開アンケートフォーム: src/app/s/[surveyId]/page.tsx。アンケートスキーマ: surveys.isAnonymous。回答保存ロジック: survey_responsesテーブルにINSERTするServer Action or API。"
+    },
+    {
+      "id": 11,
+      "title": "アンケート回答者一覧からタグ一括付与",
+      "description": "アンケート回答一覧ページ(src/app/(dashboard)/surveys/[id]/responses/page.tsx)を改修。(1) 各回答行にチェックボックス追加 (2) ヘッダーに全選択チェックボックス (3) 「選択した回答者にタグ付与」ボタン追加 (4) ボタン押下でタグ選択モーダル表示(既存タグ一覧から選択) (5) 確定時: 選択された回答者のemailで顧客を検索し、customer_tagsにINSERT。顧客未登録の場合は「自動作成して付与」or「スキップ」の選択肢を表示。Server Actionで一括処理。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "回答一覧: src/app/(dashboard)/surveys/[id]/responses/page.tsx。タグ: tags, customer_tagsテーブル。顧客: customersテーブル。タグクエリ: src/lib/db/queries/tags.ts。"
+    },
+    {
+      "id": 12,
+      "title": "顧客管理：カスタムステータス（習熟度）機能",
+      "description": "新テーブルcustomer_statuses(id, organizationId, name, color, sortOrder, createdAt)をマイグレーション追加。customersテーブルにstatusId(text, FK→customer_statuses.id, nullable)カラム追加。設定画面にステータス管理ページ(/settings/statuses)新規作成: ステータスの追加(名前+色)・編集・削除・並替え。例:「ClaudeCode初心者」「AI初心者」「中級者」等を自由に登録。顧客一覧にステータスバッジ表示+フィルタドロップダウン追加。顧客詳細画面でステータス変更ドロップダウン追加。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "customersスキーマ: src/lib/db/schema.ts L133付近。顧客一覧: src/app/(dashboard)/customers/page.tsx。顧客詳細: src/app/(dashboard)/customers/[id]/page.tsx。設定画面: src/app/(dashboard)/settings/。タグ管理の実装を参考に: src/app/(dashboard)/customers/tags/page.tsx"
+    },
+    {
+      "id": 13,
+      "title": "メルマガ：差し込み変数ボタン（{{name}}等の自動挿入）",
+      "description": "キャンペーン作成/編集画面のメール本文エディタ上部にツールバーボタン「差し込み変数」を追加。クリックでドロップダウンメニュー表示: {{name}}(顧客名), {{email}}(メールアドレス), {{company}}(会社名)。選択するとカーソル位置にテキスト挿入。textareaの場合はselectionStart/selectionEndで挿入位置を取得。リッチエディタの場合はエディタAPIで挿入。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "キャンペーン作成: src/app/(dashboard)/campaigns/new/page.tsx。キャンペーン編集: src/app/(dashboard)/campaigns/[id]/page.tsx。メール本文入力はtextareaまたはリッチエディタ(実装を確認)。送信ロジックでの変数置換: src/lib/email/index.tsまたはsend-scheduled cron内。"
+    },
+    {
+      "id": 14,
+      "title": "メルマガ：プレーンテキスト送信対応",
+      "description": "email_campaignsテーブルにformat(text, デフォルト'html')カラムを追加するマイグレーション作成。キャンペーン作成/編集画面に送信形式切替UI追加(ラジオボタンまたはタブ: 「HTML」/「テキスト」)。テキスト選択時はリッチエディタの代わりにシンプルなtextareaを表示。送信処理(/api/cron/send-scheduled)でformatを判定し、html形式ならContent-Type: text/html、text形式ならContent-Type: text/plainで送信。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "pending",
+      "context_summary": "email_campaignsスキーマ: src/lib/db/schema.ts L270付近。キャンペーン作成: src/app/(dashboard)/campaigns/new/page.tsx。送信cron: src/app/api/cron/send-scheduled/route.ts。メール送信: src/lib/email/index.ts"
+    },
+    {
+      "id": 15,
+      "title": "メルマガ：新規作成からの即時配信フロー修正",
+      "description": "現状の問題: キャンペーン新規作成時、即時配信を選んでもstatus=draftで保存され、詳細画面から再度送信操作が必要。修正: キャンペーン新規作成画面の送信ボタンを分割→「下書き保存」と「今すぐ送信」の2ボタンに。「今すぐ送信」押下時: 確認モーダル表示(「○○人に今すぐ送信しますか？」) → 承認でstatus='sending'としてDB保存 → そのままServer Action内で送信処理を実行(send-scheduled cronと同じロジックを共通関数化して呼び出し)。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "キャンペーン新規作成: src/app/(dashboard)/campaigns/new/page.tsx。送信ロジック: src/app/api/cron/send-scheduled/route.ts内の送信処理部分。email_campaignsのstatus: draft/scheduled/sending/sent/canceled。"
+    },
+    {
+      "id": 16,
+      "title": "イベント参加条件の設定・アンケートフォーム上部への表示",
+      "description": "eventsテーブルにparticipationRequirements(text, nullable)カラムを追加するマイグレーション作成。イベント編集画面(/events/[id])に「参加条件」テキストエリアフィールドを追加（例: 「PC持参必須」「Python基礎知識がある方」等）。公開イベント詳細ページ(/e/[eventId])で、アンケートフォームの上部（イベント概要の直後、フォーム入力欄の前）に参加条件をハイライトボックス(bg-amber-50 border-amber-200等の注意喚起スタイル)で目立つように表示。回答者が条件を確認してからフォームに進める構成にする。participationRequirementsが空/nullの場合はボックス自体を非表示。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "eventsスキーマ: src/lib/db/schema.ts L100-128。イベント編集: src/app/(dashboard)/events/[id]/page.tsx。公開イベント詳細: src/app/e/[eventId]/page.tsx。マイグレーション例: drizzle/migrations/内の既存ファイル。"
+    }
+  ]
+}

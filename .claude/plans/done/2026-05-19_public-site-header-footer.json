@@ -1,0 +1,107 @@
+{
+  "goal": "公開サイト共通ヘッダー・フッター＋新セクション（事例・お役立ち資料・運営者情報・法的ページ）構築",
+  "created": "2026-05-19T12:00:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "公開ページ共通レイアウト（ヘッダー＋フッター）作成",
+      "description": "src/app/(public)/layout.tsx を新規作成する。ヘッダー: 左上にサービス名テキスト、ナビゲーションメニュー（事例一覧 /cases、ブログ /articles、お役立ち資料 /resources、運営者情報 /about）、右端に「無料相談」ボタン（目立つCTAスタイル）。フッター: プライバシーポリシー(/privacy)・利用規約(/terms)・特定商取引法に基づく表記(/legal)へのリンク、コピーライト表記。モバイル対応でハンバーガーメニューを実装。既存の公開ページ（events/public, articles, e/[eventId]）のデザイントーン（bg-gray-50, indigo系アクセント）に合わせる。ヘッダーはClient Componentとして分離し、フッターはServer Componentで可。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "Next.js App Router使用。現在公開ページ用の共通レイアウトは存在しない。既存公開ページはsrc/app/events/public/とsrc/app/articles/にある。Tailwind CSSでスタイリング。UIはbg-gray-50ベース、indigo系アクセントカラー。"
+    },
+    {
+      "id": 2,
+      "title": "事例（Case Study）DBスキーマ＋管理画面CRUD",
+      "description": "1. src/lib/db/schema.ts に caseStudies テーブルを追加: id(text PK), orgId(text FK→organizations), title(text), imageUrl(text nullable), productionPeriod(text - 例:3ヶ月), productionCost(text - 例:50万円〜), description(text nullable), sortOrder(integer default 0), isPublished(integer default 0), createdAt(text), updatedAt(text)。2. Drizzle migrationを生成・適用。3. src/lib/db/queries/caseStudies.ts にCRUDクエリ関数を作成。4. 管理画面 src/app/(dashboard)/cases/ に一覧ページ(page.tsx)、新規作成(new/page.tsx)、編集(caseId/page.tsx)を作成。画像アップロードは既存の/api/uploadエンドポイント(prefix: cases)を使用。一覧では並び替え・公開/非公開切替が可能。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "L",
+      "status": "done",
+      "context_summary": "DB: Cloudflare D1 + Drizzle ORM。スキーマは src/lib/db/schema.ts。画像アップロードAPI: /api/upload（prefix対応済み: events, blog）。管理画面は src/app/(dashboard)/ 配下。既存のイベントやブログのCRUDパターンを参考にする。"
+    },
+    {
+      "id": 3,
+      "title": "事例一覧 公開ページ",
+      "description": "src/app/(public)/cases/page.tsx を作成。DBからisPublished=1の事例をsortOrder順で取得し、カード形式で表示。各カードには: 画像（aspect-video）、事例タイトル、制作期間、制作・運用費用を表示。レスポンシブグリッド（モバイル1列、md:2列、lg:3列）。メタデータ（title, description）を設定。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        1,
+        2
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "共通レイアウト(タスク1)の中に配置される。caseStudiesテーブル(タスク2)からデータ取得。既存の events/public/page.tsx のカードデザインを参考にする。"
+    },
+    {
+      "id": 4,
+      "title": "お役立ち資料 DBスキーマ＋管理画面CRUD",
+      "description": "1. src/lib/db/schema.ts に resources テーブルを追加: id(text PK), orgId(text FK→organizations), title(text), description(text nullable), imageUrl(text nullable), sortOrder(integer default 0), isPublished(integer default 0), createdAt(text), updatedAt(text)。2. Drizzle migrationを生成・適用。3. src/lib/db/queries/resources.ts にCRUDクエリ関数を作成。4. 管理画面 src/app/(dashboard)/resources/ に一覧ページ(page.tsx)、新規作成(new/page.tsx)、編集([id]/page.tsx)を作成。画像アップロードは既存の/api/uploadエンドポイント(prefix: resources)を使用。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "L",
+      "status": "done",
+      "context_summary": "DB: Cloudflare D1 + Drizzle ORM。スキーマは src/lib/db/schema.ts。画像アップロードAPI: /api/upload（prefix対応済み）。管理画面は src/app/(dashboard)/ 配下。既存のブログCRUDパターンを参考にする。"
+    },
+    {
+      "id": 5,
+      "title": "お役立ち資料 公開ページ",
+      "description": "src/app/(public)/resources/page.tsx を作成。DBからisPublished=1の資料をsortOrder順で取得し、カード形式で表示。各カードには: 画像、タイトル、説明文を表示。レスポンシブグリッド（モバイル1列、md:2列、lg:3列）。メタデータ設定。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        1,
+        4
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "共通レイアウト(タスク1)の中に配置される。resourcesテーブル(タスク4)からデータ取得。"
+    },
+    {
+      "id": 6,
+      "title": "運営者情報 公開ページ",
+      "description": "src/app/(public)/about/page.tsx を作成。運営者の名前・プロフィール・写真などを表示するページ。初期実装では組織設定（settings/organization）のデータ（組織名等）を取得して表示。プロフィール画像、自己紹介文、経歴などのセクションを含むレイアウトを作成。将来的にダッシュボードから編集可能にする拡張を見据えつつ、まずは静的に近い形でもOK。必要なら organizations テーブルに profileDescription, profileImageUrl カラムを追加。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        1
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "共通レイアウト(タスク1)の中に配置される。組織情報は src/lib/db/schema.ts の organizations テーブルに格納。設定画面は src/app/(dashboard)/settings/organization/page.tsx。"
+    },
+    {
+      "id": 7,
+      "title": "プライバシーポリシー・利用規約・特商法ページ作成",
+      "description": "以下の3ページを src/app/(public)/ 配下に作成: 1. privacy/page.tsx - プライバシーポリシー（テンプレート的な内容で、後から編集できるよう）。2. terms/page.tsx - 利用規約（同上）。3. legal/page.tsx - 特定商取引法に基づく表記。テーブル形式で販売事業者名・所在地・連絡先等の項目を並べる。価格の欄は「各サービス・イベントページをご参照ください」と記載。各ページは共通レイアウト(タスク1)のヘッダー・フッター内に表示される。シンプルなproseスタイルで読みやすく。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [
+        1
+      ],
+      "size": "S",
+      "status": "done",
+      "context_summary": "共通レイアウト(タスク1)の中に配置される。Tailwind CSSのproseクラスを活用。特商法の価格欄は各ページ参照とする。"
+    },
+    {
+      "id": 8,
+      "title": "既存公開ページを共通レイアウトに統合",
+      "description": "既存の公開ページを (public) route group に移動して共通ヘッダー・フッターを適用する。1. src/app/events/public/ → src/app/(public)/events/ に移動（EventFilters.tsx含む）。2. src/app/articles/ → src/app/(public)/articles/ に移動（page.tsx, [slug]/page.tsx, category/[slug]/page.tsx）。3. src/app/e/[eventId]/ → src/app/(public)/e/[eventId]/ に移動（page.tsx, EventRegistrationForm.tsx, ImageCarousel.tsx, actions.ts）。4. 各ページ内の個別ヘッダー（h1タグ周辺のtext-center mb-10部分）は残しつつ、共通ヘッダーと重複しないよう調整。5. リンクパスが変わらないことを確認（route groupは URL に影響しない）。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [
+        1
+      ],
+      "size": "S",
+      "status": "done",
+      "context_summary": "移動対象: src/app/events/public/(2ファイル), src/app/articles/(3ファイル), src/app/e/[eventId]/(4ファイル)。Next.js App Routerのroute group ((public))はURLパスに影響しない。移動後もimportパスの修正が必要。"
+    }
+  ],
+  "completed": "2026-05-19T12:15:03.035Z"
+}

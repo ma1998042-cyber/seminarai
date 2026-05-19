@@ -1,0 +1,73 @@
+{
+  "goal": "イベント管理画面の改善（複数削除・タブ分け・リマインドメール編集）",
+  "created": "2026-05-17T12:00:00",
+  "completed": "2026-05-17T13:15:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "イベント一覧を「開催予定」「終了済み」タブで分ける",
+      "description": "src/app/(dashboard)/events/page.tsx のイベント一覧に「開催予定」「終了済み」のタブを追加する。既存のvisibilityタブとは別に、上位のタブとして配置。\n\n実装内容:\n1. src/lib/db/queries/events.ts の getEvents に ended フィルタオプションを追加（startDate < today で終了判定、startDateがnullのものは開催予定扱い）\n2. countEvents にも同様のフィルタを追加\n3. events/page.tsx に searchParams として tab=upcoming|ended を受け取り、デフォルトは upcoming\n4. タブUI: 「開催予定」「終了済み」を visibilityタブの上に配置\n5. 終了済みタブでもvisibilityフィルタは併用可能にする",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "events/page.tsx: visibilityタブでフィルタ中。getEvents(db, orgId, {visibility, limit, offset})で取得。eventsテーブルにstartDateカラムあり（text型、YYYY-MM-DD or YYYY-MM-DDTHH:mm形式）"
+    },
+    {
+      "id": 2,
+      "title": "イベント一覧に複数選択＆一括削除機能を追加",
+      "description": "イベント一覧で複数イベントを選択して一括削除できるようにする。\n\n実装内容:\n1. events/page.tsx をServer ComponentとClient Componentに分離。リスト部分をClient Component化\n2. 各イベント行にチェックボックスを追加（左端）\n3. 1件以上選択時にフローティングバー or ヘッダーに「選択した○件を削除」ボタンを表示\n4. 全選択/全解除トグルも追加\n5. src/app/(dashboard)/events/actions.ts に deleteEventsAction(ids: string[]) を新規作成\n   - 既存のdeleteEventAction（events/[id]/actions.ts）のロジックを参考に、複数IDをループまたはinArrayで削除\n   - 組織スコープの検証必須\n   - 関連surveys.eventIdのnull化、eventRegistrationsの削除も行う\n6. 削除確認モーダル表示（既存DeleteEventButtonのUIパターンを踏襲）",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [1],
+      "size": "M",
+      "status": "done",
+      "context_summary": "既存の単体削除: events/[id]/actions.ts の deleteEventAction。surveys.eventIdをnull化→eventRegistrations削除→events削除の順。組織スコープ検証あり。DeleteEventButton.tsxに確認モーダルUI実装済み"
+    },
+    {
+      "id": 3,
+      "title": "リマインドメールテンプレートのDB保存（スキーマ拡張）",
+      "description": "eventsテーブルにリマインドメールのカスタムテンプレート用カラムを追加する。\n\n実装内容:\n1. drizzle/migrations/ に新しいマイグレーションSQL作成:\n   ALTER TABLE events ADD COLUMN reminder_subject TEXT;\n   ALTER TABLE events ADD COLUMN reminder_body TEXT;\n2. src/lib/db/schema.ts の events テーブル定義に追加:\n   reminderSubject: text('reminder_subject'),\n   reminderBody: text('reminder_body'),\n3. src/lib/db/queries/events.ts の updateEvent の型にも追加\n\nreminderSubject/reminderBody がnullの場合はデフォルトテンプレートを使用する設計。プレースホルダとして {{参加者名}} {{イベント名}} {{開催日時}} {{場所}} {{残り日数}} を使用可能とする。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "schema.ts: eventsテーブルにreminderEnabled(integer)とreminderDays(text, JSON配列)あり。マイグレーションは drizzle/migrations/ にSQL配置。queries/events.ts の updateEvent にPartial型定義あり"
+    },
+    {
+      "id": 4,
+      "title": "リマインドメール内容の表示・編集UI",
+      "description": "イベント編集フォームのリマインド設定セクションにメールテンプレート編集機能を追加する。\n\n実装内容:\n1. src/app/(dashboard)/events/[id]/edit/EventEditForm.tsx のリマインド設定部分を拡張\n2. EventData型にreminderSubject, reminderBodyを追加\n3. リマインド有効時に表示される設定エリアに:\n   - 件名入力フィールド（placeholder: 【リマインド】{{イベント名}} 開催まであと{{残り日数}}日）\n   - 本文テキストエリア（placeholder にデフォルトテンプレートの内容例を表示）\n   - 利用可能プレースホルダの一覧表示（{{参加者名}} {{イベント名}} {{開催日時}} {{場所}} {{残り日数}}）\n   - プレビューボタン: プレースホルダをサンプル値で置換して表示\n4. edit/actions.ts の updateEventAction で reminderSubject, reminderBody を保存\n5. edit/page.tsx でイベントデータ取得時にこれらのフィールドも渡す\n6. 未入力の場合はデフォルトテンプレートが使われる旨のヘルプテキスト表示",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [3],
+      "size": "M",
+      "status": "done",
+      "context_summary": "EventEditForm.tsx: リマインド設定としてreminderEnabled(トグル)とreminderDays(チェックボックス)のUIあり。edit/actions.tsにupdateEventActionあり。edit/page.tsxでeventデータをpropsとして渡している"
+    },
+    {
+      "id": 5,
+      "title": "cron送信処理をDBテンプレート参照に変更",
+      "description": "src/app/api/cron/send-reminders/route.ts のハードコードHTMLテンプレートを、DBのカスタムテンプレートがあればそちらを使うよう変更する。\n\n実装内容:\n1. event.reminderSubject が存在すればそれを件名に使用、なければ既存の `【リマインド】${event.title} 開催まであと${matchedDay}日` をデフォルト\n2. event.reminderBody が存在すればプレースホルダを置換してHTMLメール本文に使用、なければ既存のハードコードHTMLをデフォルト\n3. プレースホルダ置換関数を作成:\n   - {{参加者名}} → reg.fullName || '参加者'\n   - {{イベント名}} → event.title\n   - {{開催日時}} → formattedDate\n   - {{場所}} → locationText\n   - {{残り日数}} → matchedDay\n4. reminderBodyはプレーンテキストとして保存されるため、改行を<br>に変換し、基本的なHTMLラッパーで囲む",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [3],
+      "size": "S",
+      "status": "done",
+      "context_summary": "send-reminders/route.ts: reminderEnabledイベントをループし、参加者にHTML形式のリマインドメールを送信。sendEmail(to, subject, htmlContent, 'html')で送信。件名とHTMLテンプレートがハードコード"
+    },
+    {
+      "id": 6,
+      "title": "アンケート編集保存時のエラー修正（完了メール・Stripe設定）",
+      "description": "アンケート編集画面で完了メール送信チェックやStripe決済設定を変更して保存するとエラーになる問題を修正する。\n\n調査・修正内容:\n1. マイグレーション0014_add_completion_email_enabled.sqlが未デプロイ → デプロイ確認\n2. updateSurveyアクション（surveys/[id]/edit/actions.ts）で渡すデータ型の整合性確認\n   - completionEmailEnabled: boolean → integer(mode:boolean)の変換が正しいか\n   - paymentAmount: 0の場合にnull vs 0の扱い確認\n3. エラーの再現と原因特定（ブラウザコンソール or サーバーログ確認）\n4. 修正後、完了メール有効/無効の切り替え保存、Stripe設定の変更保存が正常に動作することを確認\n5. 新規作成（surveys/new/actions.ts）側にも同じ問題があれば修正",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "schema.ts: surveysテーブルにcompletionEmailEnabled(integer,mode:boolean), completionEmailSubject(text), completionEmailBody(text)あり。マイグレーション0012でsubject/body追加、0014でenabled追加（未コミット）。edit/actions.tsのupdateSurveyで3フィールドを渡している。paymentEnabled/paymentAmountも同様の構造"
+    }
+  ]
+}

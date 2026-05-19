@@ -1,0 +1,73 @@
+{
+  "goal": "メルマガ機能の拡充（送信・下書き・予約配信・テンプレート連携・ステップ配信エンジン）",
+  "created": "2026-05-15T12:00:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "キャンペーン詳細ページ作成（参照・編集・削除）",
+      "description": "/src/app/(dashboard)/campaigns/[id]/page.tsx を新規作成する。既存の campaigns/new/page.tsx と campaigns/new/actions.ts を参考にする。\n\n実装内容:\n- キャンペーン詳細表示（title, subject, bodyHtml, targetType, status, scheduledAt, sentCount等）\n- 下書き(draft)状態: 編集フォーム表示、保存・送信・予約配信ボタン、削除ボタン\n- 予約済み(scheduled)状態: 編集フォーム表示、予約変更・キャンセルボタン\n- 送信済み(sent)状態: 読み取り専用で詳細表示（送信数、開封数等の統計）\n- キャンセル済み(canceled)状態: 読み取り専用表示、削除ボタン\n- Server Actions: updateCampaign(), deleteCampaign(), cancelCampaign() を実装\n\nDB: src/lib/db/schema.ts の emailCampaigns テーブル（269-296行）\nクエリ: src/lib/db/queries/campaigns.ts\nメール送信: src/lib/email.ts の sendEmail()\n既存actions参考: src/app/(dashboard)/campaigns/new/actions.ts",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "L",
+      "status": "done",
+      "context_summary": "campaigns/[id]/page.tsx が存在しない。campaigns/new/ の作成フォームとactionsは実装済み。emailCampaignsテーブルにstatus, scheduledAt等のカラムあり。"
+    },
+    {
+      "id": 2,
+      "title": "キャンペーン一覧からの操作改善",
+      "description": "/src/app/(dashboard)/campaigns/page.tsx を改善する。\n\n実装内容:\n- 各キャンペーン行に詳細ページ(/campaigns/[id])へのリンクを追加\n- ステータスに応じたアクションボタン表示（編集/削除/キャンセル）\n- 下書きタブ・予約済みタブ等のフィルタリングUI改善\n- 削除確認ダイアログ\n\n既存ファイル: src/app/(dashboard)/campaigns/page.tsx (123行)",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [1],
+      "size": "M",
+      "status": "done",
+      "context_summary": "campaigns/page.tsx は一覧表示のみ。タスク1で詳細ページが作成された前提で、リンクとアクションボタンを追加する。"
+    },
+    {
+      "id": 3,
+      "status_note": "推奨: Cron Triggers + API Route",
+      "title": "予約配信のスケジューラー技術調査",
+      "description": "Cloudflare Workers環境での予約配信実現方法を調査する。\n\n調査項目:\n1. Cloudflare Cron Triggers: wrangler.tomlの[triggers]設定でcron定義可能か。OpenNext (opennextjs-cloudflare) との互換性\n2. Cloudflare Queues: メッセージキューで遅延配信が可能か\n3. Cloudflare Durable Objects: アラームAPIでスケジュール実行可能か\n4. 外部サービス連携: Brevo API自体に予約送信機能があるか\n5. シンプルなポーリング方式: APIエンドポイントを作り外部cronサービス(cron-job.org等)から叩く方式\n\n現在の構成: Next.js + OpenNext + Cloudflare Workers + D1 + R2\nwrangler.toml の現在の設定も確認すること\n\n最もシンプルで実現可能な方法を推奨として報告する。",
+      "type": "research",
+      "agent": "gemini",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "Cloudflare Workers (OpenNext) 環境。wrangler.toml にcron設定は現在なし。D1データベースにscheduledAtカラムあり。"
+    },
+    {
+      "id": 4,
+      "title": "予約配信の実行エンジン実装",
+      "description": "タスク3の調査結果に基づき、予約配信の自動実行機能を実装する。\n\n実装内容:\n- スケジューラー機構（Cron Trigger or 外部cron + APIエンドポイント）\n- /api/cron/send-scheduled のようなAPIルートを作成\n- emailCampaignsテーブルから status='scheduled' かつ scheduledAt <= now() のレコードを取得\n- 該当キャンペーンの配信対象顧客を取得し、Brevo APIでメール送信\n- 送信完了後に status='sent', sentCount を更新\n- エラーハンドリング（部分失敗時のリトライ等）\n- 認証: APIキーまたはシークレットヘッダーでcronエンドポイントを保護\n\nDB: emailCampaigns (status, scheduledAt), emailSends\nメール送信: src/lib/email.ts\n既存の送信ロジック: campaigns/new/actions.ts の送信部分を参考",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [3],
+      "size": "L",
+      "status": "done",
+      "context_summary": "タスク3の調査結果を元に最適な方式を選択。emailCampaignsにscheduledAtカラムあり。送信ロジックはcampaigns/new/actions.tsに既存。"
+    },
+    {
+      "id": 5,
+      "title": "テンプレートからキャンペーン作成機能",
+      "description": "テンプレートを使ってキャンペーンを簡単に作成できる機能を追加する。\n\n実装内容:\n1. テンプレート一覧(/campaigns/templates/page.tsx)に「この内容で配信作成」ボタン追加\n2. テンプレート詳細(/campaigns/templates/[id]/page.tsx)に「この内容で配信作成」ボタン追加\n3. キャンペーン作成フォーム(/campaigns/new/page.tsx)にテンプレート選択ドロップダウン追加\n   - 選択時にsubject, bodyHtml, bodyText, previewTextを自動入力\n4. テンプレートIDをクエリパラメータで渡す方式: /campaigns/new?template=[id]\n\nDB: emailTemplates テーブル (320-332行)\n既存テンプレートUI: campaigns/templates/ 配下\n既存作成フォーム: campaigns/new/page.tsx",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "emailTemplatesテーブルにname, subject, bodyHtml, bodyText あり。テンプレートCRUDは完全実装済み。キャンペーン作成フォームも実装済み。両者を連携させる。"
+    },
+    {
+      "id": 6,
+      "title": "ステップ配信の送信実行エンジン実装",
+      "description": "ステップ配信（シーケンス）の自動送信エンジンを実装する。DB設計とUI管理画面は実装済み。\n\n実装内容:\n- /api/cron/process-sequences のようなAPIルートを作成\n- 処理フロー:\n  1. activeなstepCampaignsを取得\n  2. 各キャンペーンのenrollments（stepCampaignEnrollments）を取得\n  3. enrolledAt + currentStepのdelayDays <= now() の条件で送信対象を判定\n  4. 該当ステップのsubject/bodyHtmlでメール送信\n  5. currentStepをインクリメント\n  6. 全ステップ完了時はenrollmentのstatusをcompletedに更新\n- タスク4と同じスケジューラー機構を共用\n- エラーハンドリング\n\nDB: stepCampaigns (337-351行), stepCampaignSteps (356-368行), stepCampaignEnrollments (373-383行)\nメール送信: src/lib/email.ts\n既存UI: campaigns/sequences/ 配下",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [4],
+      "size": "L",
+      "status": "done",
+      "context_summary": "stepCampaigns/stepCampaignSteps/stepCampaignEnrollmentsテーブル定義済み。sequences/のUI・CRUD実装済み。送信実行エンジンのみ未実装。タスク4のスケジューラー機構を共用する。"
+    }
+  ]
+}

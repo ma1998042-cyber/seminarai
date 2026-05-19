@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(rm -rf .open-next .next)",
+      "Bash(npm run:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(npx drizzle-kit:*)"
+    ]
+  }
+}

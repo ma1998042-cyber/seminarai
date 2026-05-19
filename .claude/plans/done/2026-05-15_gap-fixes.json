@@ -1,0 +1,182 @@
+{
+  "goal": "Gap分析で見つかった高・中の改善ポイント15件を解消する",
+  "created": "2026-05-15T12:00:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "ステップ配信のセキュリティ修正（org検証・認証追加）",
+      "description": "src/app/(dashboard)/campaigns/sequences/actions.ts の saveStep（75-107行）と deleteStep（109-116行）に、step_campaign_id が現在ユーザーの組織に属するか検証するロジックを追加する。getSequenceData（139-186行）には認証チェック（auth.api.getSession）を追加し、未認証なら即エラーを返す。他のアクション（saveSequence, updateSequenceStatus, enrollCustomers）と同じパターン（and(eq(...id, id), eq(...organizationId, orgId))）で実装する。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "sequences/actions.ts にある saveStep/deleteStep/getSequenceData が org スコープチェックや認証を行っていない。同ファイル内の saveSequence 等は正しく実装されているのでそれを参考にする。"
+    },
+    {
+      "id": 2,
+      "title": "イベントの削除機能を追加",
+      "description": "1) src/app/(dashboard)/events/[id]/actions.ts に deleteEventAction を追加。events テーブルから該当イベントを削除（org検証付き）。関連する event_registrations も削除またはカスケード確認。2) src/app/(dashboard)/events/[id]/page.tsx の詳細画面に削除ボタンを追加。確認ダイアログ付きで、削除後は /events にリダイレクト。draft/cancelled 等のステータス制限は不要（全ステータスで削除可能）。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "イベントは src/app/(dashboard)/events/ 配下。作成・編集はあるが削除がない。スキーマは src/lib/db/schema.ts の events テーブル。関連テーブル: event_registrations。キャンペーン削除（campaigns/[id]/actions.ts の deleteCampaignAction）を参考パターンにできる。"
+    },
+    {
+      "id": 3,
+      "title": "アンケートの削除機能を追加",
+      "description": "1) src/app/(dashboard)/surveys/[id]/actions.ts（なければ作成）に deleteSurveyAction を追加。surveys テーブルから該当アンケートを削除（org検証付き）。関連する survey_questions, survey_responses もカスケード削除。2) src/app/(dashboard)/surveys/[id]/page.tsx の詳細画面に削除ボタンを追加。確認ダイアログ付きで、削除後は /surveys にリダイレクト。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "アンケートは src/app/(dashboard)/surveys/ 配下。スキーマは src/lib/db/schema.ts の surveys, survey_questions, survey_responses テーブル。deleteSurveyQuestions（設問のみ削除）は surveys/[id]/edit/actions.ts にあるが、アンケート本体の削除はない。"
+    },
+    {
+      "id": 4,
+      "title": "ステップ配信の削除機能を追加",
+      "description": "1) src/app/(dashboard)/campaigns/sequences/actions.ts に deleteSequenceAction を追加。step_campaigns テーブルから該当シーケンスを削除（org検証付き）。関連する step_campaign_steps, step_campaign_enrollments もカスケード削除。2) src/app/(dashboard)/campaigns/sequences/[id]/page.tsx の詳細画面に削除ボタンを追加。確認ダイアログ付きで、削除後は /campaigns/sequences にリダイレクト。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "ステップ配信は src/app/(dashboard)/campaigns/sequences/ 配下。スキーマは src/lib/db/schema.ts の step_campaigns, step_campaign_steps, step_campaign_enrollments テーブル。deleteStep（個別ステップ削除）は既存だが、シーケンス本体の削除がない。"
+    },
+    {
+      "id": 5,
+      "title": "キャンペーンHTML本文のXSS対策",
+      "description": "src/app/(dashboard)/campaigns/[id]/page.tsx の333行目付近で dangerouslySetInnerHTML を使ってキャンペーン本文HTMLを表示している箇所に、DOMPurify（isomorphic-dompurify）でサニタイズを追加する。1) npm install isomorphic-dompurify 2) 表示前に DOMPurify.sanitize(campaign.bodyHtml) を通す。テンプレートプレビュー等、他に dangerouslySetInnerHTML を使っている箇所も同様に対応。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "campaigns/[id]/page.tsx:333 で bodyHtml を dangerouslySetInnerHTML で表示。サニタイズなし。同一組織メンバー間のXSSリスクあり。"
+    },
+    {
+      "id": 6,
+      "title": "ステップ配信のステップ編集機能を追加",
+      "description": "src/app/(dashboard)/campaigns/sequences/[id]/page.tsx で、既存ステップの件名（subject）・本文（body_html）・待機日数（delay_days）を編集できるUIを追加する。1) 各ステップに「編集」ボタンを追加し、クリックでインライン編集モードに切り替え 2) sequences/actions.ts の saveStep を更新（idが既存のものなら UPDATE、なければ INSERT）。org検証はタスク#1で追加済み前提。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        1
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "sequences/[id]/page.tsx にステップ一覧表示あり。現在は追加（saveStep）と削除（deleteStep）のみ。saveStep は新規追加のみ対応。step_campaign_steps テーブルに id, step_campaign_id, step_order, name, subject, body_html, delay_days カラムあり。"
+    },
+    {
+      "id": 7,
+      "title": "タグ名・色の編集機能を追加",
+      "description": "1) src/app/(dashboard)/customers/actions.ts に updateTag(id, { name, color }) アクションを追加。org検証付き。2) src/app/(dashboard)/customers/tags/TagsClient.tsx の各タグ行に「編集」ボタンを追加。クリックでインライン編集（名前・色）に切り替え、保存で updateTag を呼ぶ。tags テーブルは schema.ts で id, name, color, organizationId カラムを持つ。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "タグ管理は customers/tags/TagsClient.tsx。createTag/deleteTag は customers/actions.ts にある。tags テーブル: id, name, color, organizationId。"
+    },
+    {
+      "id": 8,
+      "title": "メール開封率・クリック率のトラッキングロジック実装",
+      "description": "1) 開封トラッキング: メール送信時にbodyHtmlへ1x1トラッキングピクセル画像を埋め込む。/api/track/open/[sendId] エンドポイントを作成し、GETリクエストで email_sends の openCount をインクリメント、1x1透過GIFを返す。2) クリックトラッキング: メール内リンクを /api/track/click/[sendId]?url=ENCODED_URL に書き換えるユーティリティを作成。エンドポイントで clickCount をインクリメント後、元URLにリダイレクト。3) cron/send-scheduled と cron/process-sequences のメール送信処理にトラッキング埋め込みを統合。4) キャンペーン詳細画面に開封率・クリック率の表示を追加。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "L",
+      "status": "done",
+      "context_summary": "email_sends テーブルに openCount, clickCount カラムは既存（常に0）。メール送信は cron/send-scheduled/route.ts と cron/process-sequences/route.ts で実行。Cloudflare Workers上で動作。キャンペーン詳細は campaigns/[id]/page.tsx。"
+    },
+    {
+      "id": 9,
+      "title": "顧客一覧にページネーション追加",
+      "description": "1) src/app/(dashboard)/customers/page.tsx で現在 limit:100 ハードコードの箇所を、URLパラメータ page でオフセットする形に変更（1ページ20件等）。2) DBクエリ層（src/lib/db/queries/customers.ts）には既に limit/offset パラメータがあるのでそれを活用。3) ページ下部にページネーションUIコンポーネントを追加（前へ/次へ/ページ番号）。4) このコンポーネントは他の一覧でも再利用できる汎用的なものにする（src/components/Pagination.tsx）。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "customers/page.tsx で limit:100 ハードコード。DBクエリ層 lib/db/queries/customers.ts に limit/offset あり。URLパラメータで page/tag/q 等のフィルタは既に一部実装済み（CustomerSearch.tsx）。"
+    },
+    {
+      "id": 10,
+      "title": "イベント一覧にページネーション追加",
+      "description": "src/app/(dashboard)/events/page.tsx のイベント一覧に、タスク#9で作成した Pagination コンポーネントを使ってページネーションを追加。DBクエリに limit/offset を追加し、URLパラメータ page で制御。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        9
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "events/page.tsx で全件取得中。#9 で作成する src/components/Pagination.tsx を再利用する。"
+    },
+    {
+      "id": 11,
+      "title": "アンケート一覧にページネーション追加",
+      "description": "src/app/(dashboard)/surveys/page.tsx のアンケート一覧に、タスク#9で作成した Pagination コンポーネントを使ってページネーションを追加。DBクエリに limit/offset を追加し、URLパラメータ page で制御。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        9
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "surveys/page.tsx で全件取得中（findMany に limit なし）。#9 で作成する Pagination コンポーネントを再利用。"
+    },
+    {
+      "id": 12,
+      "title": "キャンペーン一覧にページネーション追加",
+      "description": "src/app/(dashboard)/campaigns/page.tsx のキャンペーン一覧に、タスク#9で作成した Pagination コンポーネントを使ってページネーションを追加。DBクエリに limit/offset を追加し、URLパラメータ page で制御。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        9
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "campaigns/page.tsx で getCampaigns() により全件取得中。#9 で作成する Pagination コンポーネントを再利用。"
+    },
+    {
+      "id": 13,
+      "title": "顧客一覧のタグ絞り込みをサーバー側に移行",
+      "description": "現在 src/app/(dashboard)/customers/page.tsx でクライアント側フィルタしているタグ絞り込みを、DBクエリ（lib/db/queries/customers.ts）側の WHERE 句で処理するように変更。customer_tags テーブルを JOIN し、タグIDで絞り込む。#9 のページネーションと組み合わせて、絞り込み後の結果に対して正しくページングされるようにする。",
+      "type": "implementation",
+      "agent": "codex",
+      "depends_on": [
+        9
+      ],
+      "size": "M",
+      "status": "done",
+      "context_summary": "customers/page.tsx:47-52 あたりでタグフィルタをクライアント側で実施。limit:100 で取得後にフィルタするため、100件超の顧客がフィルタ対象外。customer_tags は中間テーブル（customerId, tagId）。"
+    },
+    {
+      "id": 14,
+      "title": "キャンペーン詳細・ステップ配信詳細のエラーハンドリング追加",
+      "description": "1) src/app/(dashboard)/campaigns/[id]/page.tsx の fetchData（80-108行）を try/catch で囲み、エラー時に setLoading(false) + エラーメッセージ state を設定して画面に表示。2) src/app/(dashboard)/campaigns/sequences/[id]/page.tsx の fetchData（50-53行）も同様に try/catch + エラー表示を追加。「データの読み込みに失敗しました。再読み込みしてください。」等のメッセージとリトライボタン。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "campaigns/[id]/page.tsx:80-108 と sequences/[id]/page.tsx:50-53 の fetchData に try/catch がなく、エラー時にローディングが無限に続く。"
+    },
+    {
+      "id": 15,
+      "title": "全ページ共通の error.tsx / loading.tsx を追加",
+      "description": "1) src/app/(dashboard)/error.tsx を作成。'use client' でエラーメッセージ + リトライボタンを表示するコンポーネント。2) src/app/(dashboard)/loading.tsx を作成。スケルトンローダー or スピナーを表示。3) src/app/error.tsx（ルートレベル）も作成して、dashboard外のエラーもカバー。Next.js App Router の規約に従い、各ファイルを配置。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done",
+      "context_summary": "現在 src/app/ 配下に error.tsx / loading.tsx が一切ない。Next.js App Router では error.tsx でエラーバウンダリ、loading.tsx で Suspense fallback を自動提供する。"
+    }
+  ],
+  "completed": "2026-05-15T13:40:00+09:00"
+}

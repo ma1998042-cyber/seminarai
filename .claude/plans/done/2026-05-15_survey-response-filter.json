@@ -1,0 +1,28 @@
+{
+  "goal": "アンケート回答一覧に選択式設問のフィルタリング機能を追加",
+  "created": "2026-05-15T23:00:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "回答一覧ページをフィルタ付き表形式に改修",
+      "description": "/surveys/[id]/responses/page.tsx を改修する。Server Componentでresponses + questionsを取得しClient Componentに渡す。Client Componentでは: (1) 選択式設問(radio/select/checkbox)ごとにドロップダウンフィルタを表示 (2) 表形式で回答者名・メール・回答日時 + 各選択式設問の回答を列として表示 (3) フィルタ選択時にクライアントサイドで絞り込み (4) フィルタのリセットボタン (5) マッチ件数の表示。データ構造: surveyResponses.answersはJSON({questionId: '選択肢の値'})、surveyQuestionsにquestionType(radio/checkbox/select等)とoptions(選択肢配列)あり。",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done",
+      "context_summary": "対象ファイル: src/app/(dashboard)/surveys/[id]/responses/page.tsx。関連: src/lib/db/queries/surveys.ts (getSurveyById, getSurveyResponses)。スキーマ: surveyResponses.answers = JSON, surveyQuestions.questionType + options"
+    },
+    {
+      "id": 2,
+      "title": "デプロイ & 動作確認",
+      "description": "rm -rf .open-next .next && npm run build:worker && npm run deploy でクリーンビルド&デプロイ。デプロイ後にアンケート回答一覧ページでフィルタが動作することを確認。",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [1],
+      "size": "S",
+      "status": "done",
+      "context_summary": "デプロイ先: seminar-crm.foritemaqua.workers.dev。ビルドコマンド: rm -rf .open-next .next && npm run build:worker && npm run deploy"
+    }
+  ]
+}

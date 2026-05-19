@@ -1,0 +1,52 @@
+{
+  "goal": "公開イベントページの戻るボタン・アンケート表示修正 + 顧客管理バグ修正 + CSVインポート改善",
+  "created": "2026-05-17T12:00:00",
+  "completed": "2026-05-17T12:45:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "戻るリンクのhref修正",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done"
+    },
+    {
+      "id": 2,
+      "title": "イベント詳細ページのアンケートを事前アンケートに変更",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "title": "顧客削除時のFK制約エラー修正",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 4,
+      "title": "顧客更新時のメールアドレスバリデーション改善",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done"
+    },
+    {
+      "id": 5,
+      "title": "CSVパーサーの改行対応",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    }
+  ]
+}

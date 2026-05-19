@@ -1,0 +1,79 @@
+{
+  "goal": "ブログ画像アップロード・イベント複製・Googleカレンダー空き日候補",
+  "created": "2026-05-19T12:00:00",
+  "completed": "2026-05-19T13:45:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "アップロードAPIを汎用化（prefix対応）",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done"
+    },
+    {
+      "id": 2,
+      "title": "ブログ編集画面にサムネイル・OG画像アップロードUI追加",
+      "type": "implementation",
+      "agent": "claude-agent",
+      "depends_on": [1],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "title": "ブログ本文エディタに画像挿入機能を追加",
+      "type": "implementation",
+      "agent": "claude-agent",
+      "depends_on": [1],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 4,
+      "title": "イベント複製API作成（データ+R2画像コピー+アンケート自動作成）",
+      "type": "implementation",
+      "agent": "claude-agent",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 5,
+      "title": "イベント詳細画面に「複製」ボタン追加",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [4],
+      "size": "S",
+      "status": "done"
+    },
+    {
+      "id": 6,
+      "title": "Google Calendar API連携の調査",
+      "type": "research",
+      "agent": "claude-agent",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 7,
+      "title": "Google Calendar OAuth認証フロー実装",
+      "type": "implementation",
+      "agent": "claude-agent",
+      "depends_on": [6],
+      "size": "L",
+      "status": "done"
+    },
+    {
+      "id": 8,
+      "title": "空き日候補表示UI（イベント作成画面）",
+      "type": "implementation",
+      "agent": "claude-agent",
+      "depends_on": [7],
+      "size": "L",
+      "status": "done"
+    }
+  ]
+}

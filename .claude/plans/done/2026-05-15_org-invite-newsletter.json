@@ -1,0 +1,52 @@
+{
+  "goal": "組織参加フロー・招待メール修正・メルマガ顧客リスト表示",
+  "created": "2026-05-15T16:00:00",
+  "completed": "2026-05-15T17:00:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "オンボーディングに「既存の組織に参加する」選択肢を追加",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 2,
+      "title": "招待トークン受け入れページ（/invite/[token]）の作成",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "title": "メール送信基盤の導入（Resend）",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 4,
+      "title": "メンバー招待時に招待メールを送信する",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [2, 3],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 5,
+      "title": "メルマガ作成画面に配信対象の顧客リストプレビューを表示",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    }
+  ]
+}

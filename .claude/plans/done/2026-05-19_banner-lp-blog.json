@@ -1,0 +1,17 @@
+{
+  "goal": "バナー表示2件制限 + LP機能(顧客紐づけ) + ブログ機能 + 公開イベントページ改善",
+  "created": "2026-05-19T12:00:00",
+  "completed": "2026-05-19T17:40:00",
+  "tasks": [
+    { "id": 1, "title": "バナー表示を縦2つまでに制限", "status": "done" },
+    { "id": 2, "title": "LP機能の設計", "status": "done" },
+    { "id": 3, "title": "LP用DBスキーマ・マイグレーション追加", "status": "done" },
+    { "id": 4, "title": "LP管理画面(CRUD)", "status": "done" },
+    { "id": 5, "title": "LP公開ページ(申し込み→顧客自動登録)", "status": "done" },
+    { "id": 6, "title": "ブログ機能の設計", "status": "done" },
+    { "id": 7, "title": "ブログ用DBスキーマ・マイグレーション追加", "status": "done" },
+    { "id": 8, "title": "ブログ管理画面(記事CRUD + リッチテキストエディタ)", "status": "done" },
+    { "id": 9, "title": "ブログ公開ページ(一覧・詳細・OGP)", "status": "done" },
+    { "id": 10, "title": "公開イベントページ: イベント種類フィルタ・検索・完売御礼表示", "status": "done" }
+  ]
+}

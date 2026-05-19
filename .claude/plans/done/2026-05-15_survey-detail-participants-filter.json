@@ -1,0 +1,52 @@
+{
+  "goal": "アンケート回答詳細・イベント参加者リスト・事前事後アンケート・メルマガ回答者フィルタ対応",
+  "created": "2026-05-15T21:15:00",
+  "completed": "2026-05-15T21:50:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "アンケート回答詳細ページ作成",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 2,
+      "title": "アンケート回答一覧ページ作成",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "title": "イベント参加者リストページ作成",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "M",
+      "status": "done"
+    },
+    {
+      "id": 4,
+      "title": "アンケート作成・編集UIに事前/事後選択を追加",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "done"
+    },
+    {
+      "id": 5,
+      "title": "メルマガ送信先に「アンケート回答者」フィルタを追加",
+      "type": "implementation",
+      "agent": "claude",
+      "depends_on": [4],
+      "size": "L",
+      "status": "done"
+    }
+  ]
+}
