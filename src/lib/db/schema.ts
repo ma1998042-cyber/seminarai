@@ -580,6 +580,25 @@ export const blogPostCategories = sqliteTable("blog_post_categories", {
 ]);
 
 // =============================================
+// CASE_STUDIES (事例)
+// =============================================
+export const caseStudies = sqliteTable("case_studies", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  imageUrl: text("image_url"),
+  productionPeriod: text("production_period"),
+  productionCost: text("production_cost"),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_case_studies_org").on(table.organizationId),
+]);
+
+// =============================================
 // ADMIN_USERS (SaaS管理者)
 // =============================================
 export const adminUsers = sqliteTable("admin_users", {
@@ -613,6 +632,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   landingPages: many(landingPages),
   blogPosts: many(blogPosts),
   blogCategories: many(blogCategories),
+  caseStudies: many(caseStudies),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -752,4 +772,8 @@ export const blogPostsRelations = relations(blogPosts, ({ one, many }) => ({
 export const blogPostCategoriesRelations = relations(blogPostCategories, ({ one }) => ({
   post: one(blogPosts, { fields: [blogPostCategories.postId], references: [blogPosts.id] }),
   category: one(blogCategories, { fields: [blogPostCategories.categoryId], references: [blogCategories.id] }),
+}));
+
+export const caseStudiesRelations = relations(caseStudies, ({ one }) => ({
+  organization: one(organizations, { fields: [caseStudies.organizationId], references: [organizations.id] }),
 }));

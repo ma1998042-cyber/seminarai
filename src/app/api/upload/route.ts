@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "ファイルサイズは5MB以下にしてください" }, { status: 400 });
   }
 
-  const ALLOWED_PREFIXES = ["events", "blog"];
+  const ALLOWED_PREFIXES = ["events", "blog", "cases", "resources"];
   const prefix = formData.get("prefix") as string | null;
   const safePrefix = prefix && ALLOWED_PREFIXES.includes(prefix) ? prefix : "events";
 
