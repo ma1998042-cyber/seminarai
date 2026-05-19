@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Upload, Loader2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Eye, EyeOff, FileDown, X } from "lucide-react";
 import { updateResourceAction, deleteResourceAction } from "../actions";
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
     title: string;
     description: string;
     imageUrl: string;
+    fileUrl: string;
     sortOrder: number;
     isPublished: boolean;
   };
@@ -23,11 +24,13 @@ export default function ResourceEditForm({ resource }: Props) {
   const [description, setDescription] = useState(resource.description);
   const [imageUrl, setImageUrl] = useState(resource.imageUrl);
   const [sortOrder, setSortOrder] = useState(resource.sortOrder);
+  const [fileUrl, setFileUrl] = useState(resource.fileUrl);
   const [isPublished, setIsPublished] = useState(resource.isPublished);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -48,6 +51,26 @@ export default function ResourceEditForm({ resource }: Props) {
     }
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("prefix", "resource-files");
+      formData.append("type", "document");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "アップロードに失敗しました");
+      setFileUrl(`/api/images/${data.key}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "アップロードに失敗しました");
+    } finally {
+      setUploadingFile(false);
+    }
+  }
+
   async function handleSave() {
     setError("");
     setSaving(true);
@@ -55,6 +78,7 @@ export default function ResourceEditForm({ resource }: Props) {
       title,
       description,
       imageUrl,
+      fileUrl,
       sortOrder,
       isPublished,
     });
@@ -136,6 +160,39 @@ export default function ResourceEditForm({ resource }: Props) {
           </div>
           {imageUrl && (
             <img src={imageUrl} alt="プレビュー" className="mt-2 h-32 w-auto rounded border border-gray-200 object-cover" />
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            ダウンロード用ファイル
+          </label>
+          {fileUrl ? (
+            <div className="flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-3">
+              <FileDown className="w-5 h-5 text-indigo-500 shrink-0" />
+              <span className="text-sm text-gray-700 truncate flex-1">{fileUrl.split("/").pop()}</span>
+              <button
+                type="button"
+                onClick={() => setFileUrl("")}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors">
+              {uploadingFile ? <Loader2 className="w-5 h-5 animate-spin text-indigo-500" /> : <Upload className="w-5 h-5 text-gray-400" />}
+              <span className="text-sm text-gray-500">
+                {uploadingFile ? "アップロード中..." : "PDF, Word, Excel, PowerPoint, ZIP をアップロード"}
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.docx,.xlsx,.pptx,.zip"
+                className="hidden"
+                disabled={uploadingFile}
+                onChange={handleFileUpload}
+              />
+            </label>
           )}
         </div>
 

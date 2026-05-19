@@ -32,6 +32,7 @@ export default async function ResourceEditPage({
         title: resource.title,
         description: resource.description || "",
         imageUrl: resource.imageUrl || "",
+        fileUrl: resource.fileUrl || "",
         sortOrder: resource.sortOrder,
         isPublished: resource.isPublished,
       }}

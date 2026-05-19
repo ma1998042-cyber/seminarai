@@ -30,6 +30,7 @@ export async function createResourceAction(form: {
   title: string
   description?: string
   imageUrl?: string
+  fileUrl?: string
   sortOrder?: number
 }): Promise<{ resourceId?: string; error?: string }> {
   const ctx = await getOrgContext()
@@ -42,6 +43,7 @@ export async function createResourceAction(form: {
     title: form.title.trim(),
     description: form.description || null,
     imageUrl: form.imageUrl || null,
+    fileUrl: form.fileUrl || null,
     sortOrder: form.sortOrder ?? 0,
   })
 
@@ -57,6 +59,7 @@ export async function updateResourceAction(
     title?: string
     description?: string
     imageUrl?: string
+    fileUrl?: string
     sortOrder?: number
     isPublished?: boolean
   }
@@ -68,6 +71,7 @@ export async function updateResourceAction(
     ...(form.title !== undefined && { title: form.title.trim() }),
     ...(form.description !== undefined && { description: form.description || null }),
     ...(form.imageUrl !== undefined && { imageUrl: form.imageUrl || null }),
+    ...(form.fileUrl !== undefined && { fileUrl: form.fileUrl || null }),
     ...(form.sortOrder !== undefined && { sortOrder: form.sortOrder }),
     ...(form.isPublished !== undefined && { isPublished: form.isPublished }),
   })
