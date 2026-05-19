@@ -304,6 +304,38 @@ export default function NewEventPage() {
         {form.is_online ? (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">開催URL</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[
+                { label: "清水", url: "https://us06web.zoom.us/j/3480342448" },
+                { label: "松永", url: "https://us06web.zoom.us/j/8600775706" },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setForm({ ...form, online_url: preset.url })}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                    form.online_url === preset.url
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  {preset.label}用 Zoom
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, online_url: "" })}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                  form.online_url !== "" && form.online_url !== "https://us06web.zoom.us/j/3480342448" && form.online_url !== "https://us06web.zoom.us/j/8600775706"
+                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                    : !form.online_url
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                手入力
+              </button>
+            </div>
             <input
               type="url"
               value={form.online_url}
