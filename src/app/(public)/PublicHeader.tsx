@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/events/public", label: "イベント一覧" },
   { href: "/case-studies", label: "事例一覧" },
   { href: "/articles", label: "ブログ" },
   { href: "/materials", label: "お役立ち資料" },
@@ -16,7 +17,7 @@ export default function PublicHeader() {
 
   return (
     <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="flex h-16 items-center justify-between px-6 lg:px-12">
         <Link
           href="/events/public"
           className="text-lg font-bold tracking-tight text-gray-900"
@@ -24,19 +25,18 @@ export default function PublicHeader() {
           SeminarAI
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm font-medium text-gray-600 transition-colors hover:text-indigo-600"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-8 md:flex">
+          <nav className="flex items-center gap-6">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm font-medium text-gray-600 transition-colors hover:text-indigo-600"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
           <Link
             href="#contact"
             className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
@@ -57,7 +57,7 @@ export default function PublicHeader() {
 
       {open && (
         <div className="border-t border-gray-200 bg-white md:hidden">
-          <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4 sm:px-6">
+          <nav className="flex flex-col gap-1 px-6 py-4">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}

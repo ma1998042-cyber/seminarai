@@ -86,6 +86,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href={`/events/public/${event.id}`}
+            target="_blank"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            公開ページ
+          </Link>
+          <Link
             href={`/events/${event.id}/edit`}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
