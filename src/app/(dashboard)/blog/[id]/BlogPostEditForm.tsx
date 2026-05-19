@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Trash2, Eye, EyeOff, Upload, Loader2, ImageIcon, ImagePlus } from "lucide-react";
 import {
   updateBlogPostAction,
   deleteBlogPostAction,
@@ -44,6 +44,70 @@ export default function BlogPostEditForm({ post, categories }: BlogPostEditFormP
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [uploadingOgImage, setUploadingOgImage] = useState(false);
+  const [insertingBodyImage, setInsertingBodyImage] = useState(false);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const bodyImageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleBodyImageInsert(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setInsertingBodyImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("prefix", "blog");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "アップロードに失敗しました");
+      const imgTag = `<img src='/api/images/${data.key}' alt='' />`;
+      const textarea = bodyTextareaRef.current;
+      const cursorPos = textarea?.selectionStart ?? bodyHtml.length;
+      const newValue = bodyHtml.slice(0, cursorPos) + imgTag + bodyHtml.slice(cursorPos);
+      setBodyHtml(newValue);
+      // カーソル位置を挿入テキストの後ろに移動
+      requestAnimationFrame(() => {
+        if (textarea) {
+          const newPos = cursorPos + imgTag.length;
+          textarea.selectionStart = newPos;
+          textarea.selectionEnd = newPos;
+          textarea.focus();
+        }
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "画像のアップロードに失敗しました");
+    } finally {
+      setInsertingBodyImage(false);
+      // 同じファイルを再選択できるようにリセット
+      if (bodyImageInputRef.current) {
+        bodyImageInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function handleImageUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setUrl: (url: string) => void,
+    setUploading: (v: boolean) => void
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("prefix", "blog");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "アップロードに失敗しました");
+      setUrl(`/api/images/${data.key}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "アップロードに失敗しました");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function toggleCategory(categoryId: string) {
     setSelectedCategoryIds((prev) =>
@@ -196,10 +260,33 @@ export default function BlogPostEditForm({ post, categories }: BlogPostEditFormP
             </div>
 
             <div>
-              <label htmlFor="bodyHtml" className="block text-sm font-medium text-gray-700 mb-1">
-                本文 (HTML)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="bodyHtml" className="block text-sm font-medium text-gray-700">
+                  本文 (HTML)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => bodyImageInputRef.current?.click()}
+                  disabled={insertingBodyImage}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {insertingBodyImage ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ImagePlus className="w-3.5 h-3.5" />
+                  )}
+                  {insertingBodyImage ? "アップロード中..." : "画像を挿入"}
+                </button>
+                <input
+                  ref={bodyImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleBodyImageInsert}
+                />
+              </div>
               <textarea
+                ref={bodyTextareaRef}
                 id="bodyHtml"
                 value={bodyHtml}
                 onChange={(e) => setBodyHtml(e.target.value)}
@@ -227,14 +314,41 @@ export default function BlogPostEditForm({ post, categories }: BlogPostEditFormP
               <label htmlFor="thumbnailUrl" className="block text-sm font-medium text-gray-700 mb-1">
                 サムネイルURL
               </label>
-              <input
-                id="thumbnailUrl"
-                type="url"
-                value={thumbnailUrl}
-                onChange={(e) => setThumbnailUrl(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="https://..."
-              />
+              <div className="flex gap-2">
+                <input
+                  id="thumbnailUrl"
+                  type="url"
+                  value={thumbnailUrl}
+                  onChange={(e) => setThumbnailUrl(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="https://..."
+                />
+                <label className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg cursor-pointer transition-colors whitespace-nowrap">
+                  {uploadingThumbnail ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  {uploadingThumbnail ? "アップロード中..." : "画像をアップロード"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingThumbnail}
+                    onChange={(e) => handleImageUpload(e, setThumbnailUrl, setUploadingThumbnail)}
+                  />
+                </label>
+              </div>
+              {thumbnailUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-gray-400" />
+                  <img
+                    src={thumbnailUrl}
+                    alt="サムネイルプレビュー"
+                    className="h-16 w-auto rounded border border-gray-200 object-cover"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -274,14 +388,41 @@ export default function BlogPostEditForm({ post, categories }: BlogPostEditFormP
               <label htmlFor="ogImageUrl" className="block text-sm font-medium text-gray-700 mb-1">
                 OG画像URL
               </label>
-              <input
-                id="ogImageUrl"
-                type="url"
-                value={ogImageUrl}
-                onChange={(e) => setOgImageUrl(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="https://..."
-              />
+              <div className="flex gap-2">
+                <input
+                  id="ogImageUrl"
+                  type="url"
+                  value={ogImageUrl}
+                  onChange={(e) => setOgImageUrl(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="https://..."
+                />
+                <label className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg cursor-pointer transition-colors whitespace-nowrap">
+                  {uploadingOgImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  {uploadingOgImage ? "アップロード中..." : "画像をアップロード"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingOgImage}
+                    onChange={(e) => handleImageUpload(e, setOgImageUrl, setUploadingOgImage)}
+                  />
+                </label>
+              </div>
+              {ogImageUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-gray-400" />
+                  <img
+                    src={ogImageUrl}
+                    alt="OG画像プレビュー"
+                    className="h-16 w-auto rounded border border-gray-200 object-cover"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
