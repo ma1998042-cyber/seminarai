@@ -52,6 +52,9 @@ export default function NewEventPage() {
   const [form, setForm] = useState({
     title: "",
     description: "",
+    recommended_for: "",
+    participation_requirements: "",
+    participation_benefits: "",
     event_type: "seminar",
     start_date: "",
     end_date: "",
@@ -78,6 +81,9 @@ export default function NewEventPage() {
       ...form,
       thumbnail_url: imageUrls[0] || "",
       image_urls: imageUrls,
+      participation_requirements: form.participation_requirements,
+      recommended_for: form.recommended_for,
+      participation_benefits: form.participation_benefits,
     });
 
     if (result.error) {
@@ -126,14 +132,47 @@ export default function NewEventPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            説明
+            イベント概要
           </label>
           <textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
-            placeholder="イベントの詳細を入力してください"
+            placeholder="イベントの概要・詳細を入力してください"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">こんな人におすすめ</label>
+          <textarea
+            value={form.recommended_for}
+            onChange={(e) => setForm({ ...form, recommended_for: e.target.value })}
+            rows={2}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+            placeholder="例: マーケティング初心者の方、集客に悩んでいる方"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">参加条件</label>
+          <textarea
+            value={form.participation_requirements}
+            onChange={(e) => setForm({ ...form, participation_requirements: e.target.value })}
+            rows={2}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+            placeholder="例: PC持参必須、Python基礎知識がある方"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">参加特典</label>
+          <textarea
+            value={form.participation_benefits}
+            onChange={(e) => setForm({ ...form, participation_benefits: e.target.value })}
+            rows={2}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+            placeholder="例: セミナー資料プレゼント、個別相談会への参加権"
           />
         </div>
 

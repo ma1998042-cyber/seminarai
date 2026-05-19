@@ -84,6 +84,7 @@ export async function createEvent(
     capacity?: number;
     thumbnailUrl?: string;
     imageUrls?: string[];
+    participationRequirements?: string;
     recommendedFor?: string;
     participationBenefits?: string;
     tags?: string[];
