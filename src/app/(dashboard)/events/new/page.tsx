@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, CalendarDays, ImagePlus, X } from "lucide-react";
 import { createEventAction } from "./actions";
+import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 
 const MAX_IMAGES = 3;
 
@@ -249,6 +250,10 @@ export default function NewEventPage() {
             ))}
           </div>
         </div>
+
+        <AvailabilityCalendar
+          onSelectDate={(date) => setForm({ ...form, start_date: date })}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div>
