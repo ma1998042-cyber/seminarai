@@ -2,6 +2,7 @@ import { FileText } from "lucide-react";
 import { getDbFromContext } from "@/lib/db";
 import { getPublishedResources } from "@/lib/db/queries/resources";
 import type { Metadata } from "next";
+import ResourceDownloadCard from "./ResourceDownloadCard";
 
 export const metadata: Metadata = {
   title: "お役立ち資料 | SeminarAI",
@@ -28,34 +29,16 @@ export default async function PublicResourcesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {items.map((item) => (
-              <div
+              <ResourceDownloadCard
                 key={item.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              >
-                {item.imageUrl ? (
-                  <div className="w-full aspect-video bg-gray-100">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full aspect-video bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
-                    <FileText className="w-12 h-12 text-indigo-200" />
-                  </div>
-                )}
-                <div className="p-5">
-                  <h2 className="text-lg font-bold text-gray-900 mb-2">
-                    {item.title}
-                  </h2>
-                  {item.description && (
-                    <p className="text-sm text-gray-500 line-clamp-3">
-                      {item.description}
-                    </p>
-                  )}
-                </div>
-              </div>
+                resource={{
+                  id: item.id,
+                  title: item.title,
+                  description: item.description || "",
+                  imageUrl: item.imageUrl || "",
+                  hasFile: !!item.fileUrl,
+                }}
+              />
             ))}
           </div>
         )}
