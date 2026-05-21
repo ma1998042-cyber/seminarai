@@ -221,6 +221,7 @@ export async function upsertEventRegistration(
     fullName?: string;
     status?: string;
     notificationConsent?: number;
+    requestedDate?: string;
   },
 ) {
   const [registration] = await db
@@ -233,6 +234,7 @@ export async function upsertEventRegistration(
         ...(data.customerId !== undefined && { customerId: data.customerId }),
         ...(data.status !== undefined && { status: data.status }),
         ...(data.notificationConsent !== undefined && { notificationConsent: data.notificationConsent }),
+        ...(data.requestedDate !== undefined && { requestedDate: data.requestedDate }),
       },
     })
     .returning();

@@ -155,6 +155,13 @@
       "when": 1779368910017,
       "tag": "0021_unique_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1779370594710,
+      "tag": "0022_low_romulus",
+      "breakpoints": true
     }
   ]
 }

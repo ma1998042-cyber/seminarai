@@ -1,0 +1,1 @@
+ALTER TABLE `event_registrations` ADD `requested_date` text;

@@ -5,7 +5,7 @@ import { surveys, surveyQuestions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { formatDateTime } from "@/lib/utils";
 import { CalendarDays, MapPin, Globe, Users, AlertCircle, Clock, ArrowLeft, UserCheck, Gift } from "lucide-react";
-import EventRegistrationForm from "./EventRegistrationForm";
+import PublicEventFormSection from "./PublicEventFormSection";
 import ImageCarousel from "./ImageCarousel";
 
 export default async function PublicEventPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -39,6 +39,9 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
   if (registrationSurvey?.status === 'active') {
     redirect(`/s/${registrationSurvey.id}`);
   }
+
+  const eventSettings = (event.settings || {}) as Record<string, unknown>;
+  const schedulingType = (eventSettings.schedulingType as string) || 'admin_specified';
 
   const isFull = event.capacity != null && event.registrationCount >= event.capacity;
   const isDeadlineExpired = event.registrationDeadline
@@ -88,14 +91,20 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
             <h1 className="text-2xl font-bold text-gray-900 mb-4">{event.title}</h1>
 
             <div className="space-y-3 text-sm text-gray-600">
-              {/* 日時 */}
-              {event.startDate && (
+              {/* 日時（admin_specifiedの場合のみ固定日時を表示） */}
+              {schedulingType !== 'availability' && event.startDate && (
                 <div className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   <span>
                     {formatDateTime(event.startDate)}
                     {event.endDate && ` - ${formatDateTime(event.endDate)}`}
                   </span>
+                </div>
+              )}
+              {schedulingType === 'availability' && (
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-indigo-600 font-medium">日程調整制（空き日時から選択）</span>
                 </div>
               )}
 
@@ -200,12 +209,13 @@ export default async function PublicEventPage({ params }: { params: Promise<{ ev
             <p className="text-sm text-gray-500">このイベントの申し込み期限は終了しました</p>
           </div>
         ) : (
-          <EventRegistrationForm
+          <PublicEventFormSection
             eventId={event.id}
             isFull={isFull}
             surveyId={registrationSurvey?.id ?? null}
             organizationId={event.organizationId}
             participationRequirements={event.participationRequirements ?? null}
+            schedulingType={schedulingType}
             questions={questions.map((q) => ({
               id: q.id,
               question_type: q.questionType,

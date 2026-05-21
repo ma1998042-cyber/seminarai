@@ -20,6 +20,7 @@ export default function EventRegistrationForm({
   organizationId,
   questions,
   participationRequirements,
+  selectedDate,
 }: {
   eventId: string;
   isFull: boolean;
@@ -27,6 +28,7 @@ export default function EventRegistrationForm({
   organizationId: string;
   questions: Question[];
   participationRequirements: string | null;
+  selectedDate?: string | null;
 }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -89,6 +91,7 @@ export default function EventRegistrationForm({
       organizationId,
       answers: questions.length > 0 ? answers : undefined,
       notificationConsent: notificationConsent ? 1 : 0,
+      requestedDate: selectedDate ?? undefined,
     });
 
     setSubmitting(false);

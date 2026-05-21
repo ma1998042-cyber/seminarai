@@ -220,6 +220,7 @@ export const eventRegistrations = sqliteTable("event_registrations", {
   registeredAt: text("registered_at").notNull().default(sql`(datetime('now'))`),
   checkedInAt: text("checked_in_at"),
   notificationConsent: integer("notification_consent").notNull().default(0),
+  requestedDate: text("requested_date"),
 }, (table) => [
   uniqueIndex("event_reg_event_email_unique").on(table.eventId, table.email),
 ]);

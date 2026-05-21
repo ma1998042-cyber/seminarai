@@ -9,12 +9,19 @@ type DateStatus = {
   status: "both_free" | "one_free" | "both_busy";
 };
 
+type FetchDatesAction = () => Promise<{
+  dates?: DateStatus[];
+  error?: string;
+}>;
+
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 export default function AvailabilityCalendar({
   onSelectDate,
+  fetchDatesAction,
 }: {
   onSelectDate: (date: string) => void;
+  fetchDatesAction?: FetchDatesAction;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +34,8 @@ export default function AvailabilityCalendar({
   const handleCheck = async () => {
     setLoading(true);
     setError("");
-    const result = await getAvailableDatesAction();
+    const action = fetchDatesAction ?? getAvailableDatesAction;
+    const result = await action();
     if (result.error) {
       setError(result.error);
       setDates(null);
