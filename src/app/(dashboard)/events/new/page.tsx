@@ -65,6 +65,7 @@ export default function NewEventPage() {
     capacity: "",
     status: "draft",
     visibility: "draft",
+    scheduling_type: "admin_specified",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,7 +73,7 @@ export default function NewEventPage() {
     setLoading(true);
     setError("");
 
-    if (form.visibility === "public" && !form.start_date) {
+    if (form.visibility === "public" && form.scheduling_type === "admin_specified" && !form.start_date) {
       setError("一般公開するには開催日時を設定してください");
       setLoading(false);
       return;
@@ -85,6 +86,7 @@ export default function NewEventPage() {
       participation_requirements: form.participation_requirements,
       recommended_for: form.recommended_for,
       participation_benefits: form.participation_benefits,
+      scheduling_type: form.scheduling_type,
     });
 
     if (result.error) {
@@ -251,30 +253,76 @@ export default function NewEventPage() {
           </div>
         </div>
 
-        <AvailabilityCalendar
-          onSelectDate={(date) => setForm({ ...form, start_date: date })}
-        />
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">開催日時</label>
-            <input
-              type="datetime-local"
-              value={form.start_date}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-            />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">日程の決め方</label>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, scheduling_type: "admin_specified" })}
+              className={`flex-1 py-3 rounded-lg border text-sm font-medium transition-all ${
+                form.scheduling_type === "admin_specified"
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              日時を指定
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, scheduling_type: "availability" })}
+              className={`flex-1 py-3 rounded-lg border text-sm font-medium transition-all ${
+                form.scheduling_type === "availability"
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              空き日程から選択
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">終了日時</label>
-            <input
-              type="datetime-local"
-              value={form.end_date}
-              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-            />
-          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            {form.scheduling_type === "admin_specified"
+              ? "開催日時を直接指定します"
+              : "Googleカレンダーの空き日程を公開ページで参加者に提示します"}
+          </p>
         </div>
+
+        {form.scheduling_type === "admin_specified" ? (
+          <>
+            <AvailabilityCalendar
+              onSelectDate={(date) => setForm({ ...form, start_date: date })}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">開催日時</label>
+                <input
+                  type="datetime-local"
+                  value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">終了日時</label>
+                <input
+                  type="datetime-local"
+                  value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+            <p className="text-sm text-gray-600">
+              公開ページでGoogleカレンダーの空き日程が参加者に表示されます。参加者が希望日時を選択して申し込みます。
+            </p>
+            <AvailabilityCalendar
+              onSelectDate={() => {}}
+            />
+          </div>
+        )}
 
         {/* Online/Offline toggle */}
         <div>

@@ -32,6 +32,7 @@ export async function updateEventAction(eventId: string, form: {
   reminder_days: number[]
   reminder_subject: string
   reminder_body: string
+  scheduling_type: string
 }): Promise<{ error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -42,7 +43,7 @@ export async function updateEventAction(eventId: string, form: {
   const profile = await getUserProfile(db, user.id)
   if (!profile?.currentOrganizationId) return { error: '組織が見つかりません' }
 
-  if (form.visibility === 'public' && !form.start_date) {
+  if (form.visibility === 'public' && form.scheduling_type === 'admin_specified' && !form.start_date) {
     return { error: '一般公開するには開催日時を設定してください' }
   }
 
@@ -69,6 +70,7 @@ export async function updateEventAction(eventId: string, form: {
     reminderDays: JSON.stringify(form.reminder_days),
     reminderSubject: form.reminder_subject || null,
     reminderBody: form.reminder_body || null,
+    settings: { schedulingType: form.scheduling_type },
   })
 
   if (!event) return { error: 'イベントの更新に失敗しました' }

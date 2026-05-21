@@ -25,6 +25,7 @@ export async function createEventAction(form: {
   participation_requirements: string
   recommended_for: string
   participation_benefits: string
+  scheduling_type: string
 }): Promise<{ eventId?: string; error?: string }> {
   const auth = getAuth()
   const session = await auth.api.getSession({ headers: await headers() })
@@ -35,7 +36,7 @@ export async function createEventAction(form: {
   const profile = await getUserProfile(db, user.id)
   if (!profile?.currentOrganizationId) return { error: '組織が見つかりません' }
 
-  if (form.visibility === 'public' && !form.start_date) {
+  if (form.visibility === 'public' && form.scheduling_type === 'admin_specified' && !form.start_date) {
     return { error: '一般公開するには開催日時を設定してください' }
   }
 
@@ -57,6 +58,7 @@ export async function createEventAction(form: {
     participationRequirements: form.participation_requirements || undefined,
     recommendedFor: form.recommended_for || undefined,
     participationBenefits: form.participation_benefits || undefined,
+    settings: { schedulingType: form.scheduling_type },
     createdBy: user.id,
   })
 
