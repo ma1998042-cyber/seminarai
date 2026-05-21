@@ -31,6 +31,7 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
   const [respondentEmail, setRespondentEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [contentUrl, setContentUrl] = useState("");
   const [error, setError] = useState("");
 
   const handleAnswer = (questionId: string, value: unknown) => {
@@ -97,10 +98,13 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
 
     setSubmitting(false);
     if (result.error) { setError(result.error); return; }
+    if (result.contentUrl) setContentUrl(result.contentUrl);
     setSubmitted(true);
   };
 
   if (submitted) {
+    const thankYouText = (survey.thank_you_message || "ご回答ありがとうございました！")
+      .replace(/\{\{content_url\}\}/g, contentUrl || '');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center max-w-md">
@@ -108,9 +112,17 @@ export default function SurveyForm({ survey, questions }: { survey: Survey; ques
             <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-3 whitespace-pre-wrap">
-            {survey.thank_you_message || "ご回答ありがとうございました！"}
+            {thankYouText}
           </h2>
-          <p className="text-gray-400 text-sm">このページを閉じていただいて構いません</p>
+          {contentUrl && (
+            <a
+              href={contentUrl}
+              className="inline-block mt-4 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+            >
+              コンテンツを閲覧する
+            </a>
+          )}
+          <p className="text-gray-400 text-sm mt-4">このページを閉じていただいて構いません</p>
         </div>
       </div>
     );

@@ -4,7 +4,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { getDbFromContext } from "@/lib/db";
 import { getSurveyById, getSurveyResponseById, incrementSurveyResponseCount, updateSurveyResponse } from "@/lib/db/queries/surveys";
 import { upsertCustomerByEmail } from "@/lib/db/queries/customers";
-import { surveys, events, eventRegistrations } from "@/lib/db/schema";
+import { surveys, events, eventRegistrations, workshopContents, contentAccessTokens } from "@/lib/db/schema";
 import { sendEmail } from "@/lib/email";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -14,7 +14,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 function replaceEmailPlaceholders(
   template: string,
-  context: { name: string; email: string; event?: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null } }
+  context: { name: string; email: string; event?: { title: string; startDate?: string | null; location?: string | null; onlineUrl?: string | null }; contentUrl?: string }
 ): string {
   return template
     .replace(/\{\{name\}\}/g, context.name || '')
@@ -22,7 +22,8 @@ function replaceEmailPlaceholders(
     .replace(/\{\{event_title\}\}/g, context.event?.title || '')
     .replace(/\{\{event_date\}\}/g, context.event?.startDate || '')
     .replace(/\{\{event_location\}\}/g, context.event?.location || '')
-    .replace(/\{\{online_url\}\}/g, context.event?.onlineUrl || '');
+    .replace(/\{\{online_url\}\}/g, context.event?.onlineUrl || '')
+    .replace(/\{\{content_url\}\}/g, context.contentUrl || '');
 }
 
 export default async function SurveyCompletePage({
@@ -80,6 +81,33 @@ export default async function SurveyCompletePage({
           ...(customerId ? { customerId } : {}),
         });
 
+        // コンテンツアクセストークン生成
+        let contentUrl = '';
+        if (survey.eventId) {
+          try {
+            const hasContents = await db.query.workshopContents.findFirst({
+              where: eq(workshopContents.eventId, survey.eventId),
+              columns: { id: true },
+            });
+            if (hasContents) {
+              const token = crypto.randomUUID();
+              await db.insert(contentAccessTokens).values({
+                eventId: survey.eventId,
+                surveyResponseId: response.id,
+                customerId: customerId || null,
+                token,
+              });
+              contentUrl = `https://seminar-crm.foritemaqua.workers.dev/contents/${token}`;
+            }
+          } catch {
+            // トークン生成失敗は表示に影響させない
+          }
+        }
+
+        // thankYouMessage に {{content_url}} を置換
+        thankYouMessage = thankYouMessage
+          .replace(/\{\{content_url\}\}/g, contentUrl);
+
         // 完了メール送信
         if (survey.completionEmailEnabled && survey.completionEmailBody && respondentEmail) {
           try {
@@ -93,11 +121,11 @@ export default async function SurveyCompletePage({
             }
             const subject = replaceEmailPlaceholders(
               survey.completionEmailSubject || 'ご回答ありがとうございます',
-              { name: respondentName, email: respondentEmail, event: eventData }
+              { name: respondentName, email: respondentEmail, event: eventData, contentUrl }
             );
             const body = replaceEmailPlaceholders(
               survey.completionEmailBody,
-              { name: respondentName, email: respondentEmail, event: eventData }
+              { name: respondentName, email: respondentEmail, event: eventData, contentUrl }
             );
             await sendEmail(respondentEmail, subject, body, 'text');
           } catch {

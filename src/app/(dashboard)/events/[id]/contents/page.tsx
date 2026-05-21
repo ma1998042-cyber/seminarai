@@ -1,28 +1,32 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, Plus, FileText, Pencil } from "lucide-react";
+import { ArrowLeft, FileText, Video, Link as LinkIcon, Eye, Users } from "lucide-react";
+import { eq, and, sql, isNotNull } from "drizzle-orm";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
 import { getUserProfile } from "@/lib/db/queries/users";
 import { getEventById } from "@/lib/db/queries/events";
-import { getWorkshopContents } from "@/lib/db/queries/workshopContents";
-import ContentToggle from "./ContentToggle";
-import ContentDeleteButton from "./ContentDeleteButton";
+import { workshopContents, contentAccessTokens } from "@/lib/db/schema";
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
-  manual: "マニュアル",
-  template: "テンプレート",
+  file: "ファイル",
   video: "動画",
-  other: "その他",
+  link: "リンク",
 };
 
-export default async function ContentsListPage({
+const CONTENT_TYPE_ICONS: Record<string, typeof FileText> = {
+  file: FileText,
+  video: Video,
+  link: LinkIcon,
+};
+
+export default async function EventContentsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: eventId } = await params;
+  const { id } = await params;
   const auth = getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
   const user = session?.user;
@@ -33,104 +37,164 @@ export default async function ContentsListPage({
   const orgId = profile?.currentOrganizationId;
   if (!orgId) redirect("/onboarding");
 
-  const event = await getEventById(db, orgId, eventId);
+  const event = await getEventById(db, orgId, id);
   if (!event) notFound();
 
-  const items = await getWorkshopContents(db, orgId, eventId);
+  // ワークショップコンテンツ一覧を取得
+  const contents = await db.query.workshopContents.findMany({
+    where: and(
+      eq(workshopContents.eventId, event.id),
+      eq(workshopContents.organizationId, orgId),
+    ),
+    orderBy: (c, { asc }) => [asc(c.sortOrder)],
+  });
+
+  // アクセストークン統計を取得
+  const tokenStats = await db
+    .select({
+      total: sql<number>`count(*)`,
+      accessed: sql<number>`count(${contentAccessTokens.accessedAt})`,
+    })
+    .from(contentAccessTokens)
+    .where(eq(contentAccessTokens.eventId, event.id));
+
+  const totalTokens = tokenStats[0]?.total ?? 0;
+  const accessedTokens = tokenStats[0]?.accessed ?? 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <Link
-          href={`/events/${eventId}`}
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {event.title} に戻る
-        </Link>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">コンテンツ管理</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {event.title} のワークショップコンテンツを管理します
-            </p>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
           <Link
-            href={`/events/${eventId}/contents/new`}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+            href={`/events/${event.id}`}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <Plus className="w-4 h-4" />
-            コンテンツを追加
+            <ArrowLeft className="w-5 h-5 text-gray-500" />
           </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              コンテンツ管理
+            </h1>
+            <p className="text-sm text-gray-500">{event.title}</p>
+          </div>
         </div>
       </div>
 
-      {items && items.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 text-left">
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">タイトル</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">種別</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">並び順</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">公開</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/events/${eventId}/contents/${item.id}`}
-                      className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors"
-                    >
-                      {item.title}
-                    </Link>
-                    {item.description && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{item.description}</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">
-                      {CONTENT_TYPE_LABELS[item.contentType] || item.contentType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{item.sortOrder}</td>
-                  <td className="px-6 py-4">
-                    <ContentToggle id={item.id} eventId={eventId} isPublished={!!item.isPublished} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/events/${eventId}/contents/${item.id}`}
-                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        編集
-                      </Link>
-                      <ContentDeleteButton id={item.id} eventId={eventId} title={item.title} />
+      {/* アクセス統計 */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+              <FileText className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">
+                {contents.length}
+              </p>
+              <p className="text-sm text-gray-500">コンテンツ数</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{totalTokens}</p>
+              <p className="text-sm text-gray-500">トークン発行数</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+              <Eye className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">
+                {accessedTokens}
+              </p>
+              <p className="text-sm text-gray-500">アクセス済み</p>
+            </div>
+          </div>
+          {totalTokens > 0 && (
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>
+                  {totalTokens}件中{accessedTokens}件アクセス済み
+                </span>
+                <span>
+                  {Math.round((accessedTokens / totalTokens) * 100)}%
+                </span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full">
+                <div
+                  className="h-2 bg-green-500 rounded-full"
+                  style={{
+                    width: `${Math.min((accessedTokens / totalTokens) * 100, 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* コンテンツ一覧 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">コンテンツ一覧</h2>
+        {contents.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            まだコンテンツが登録されていません
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {contents.map((content) => {
+              const Icon =
+                CONTENT_TYPE_ICONS[content.contentType] || FileText;
+              return (
+                <div
+                  key={content.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-gray-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-gray-50 rounded-lg flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-gray-500" />
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-          <FileText className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-          <h3 className="font-semibold text-gray-700 mb-2">まだコンテンツがありません</h3>
-          <p className="text-sm text-gray-400 mb-6">最初のコンテンツを追加しましょう</p>
-          <Link
-            href={`/events/${eventId}/contents/new`}
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            コンテンツを追加する
-          </Link>
-        </div>
-      )}
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">
+                        {content.title}
+                      </p>
+                      {content.description && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {content.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-500">
+                      {CONTENT_TYPE_LABELS[content.contentType] ||
+                        content.contentType}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        content.isPublished
+                          ? "bg-green-50 text-green-600"
+                          : "bg-gray-50 text-gray-400"
+                      }`}
+                    >
+                      {content.isPublished ? "公開" : "非公開"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
