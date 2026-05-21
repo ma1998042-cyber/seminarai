@@ -37,12 +37,14 @@ export default function PublicHeader() {
               </Link>
             ))}
           </nav>
-          <Link
-            href="#contact"
+          <a
+            href="https://line-harness.foritemaqua.workers.dev/r/e59f44b7"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
           >
             無料相談
-          </Link>
+          </a>
         </div>
 
         <button
@@ -68,13 +70,15 @@ export default function PublicHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="#contact"
+            <a
+              href="https://line-harness.foritemaqua.workers.dev/r/e59f44b7"
+              target="_blank"
+              rel="noopener noreferrer"
               className="mt-3 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
               onClick={() => setOpen(false)}
             >
               無料相談
-            </Link>
+            </a>
           </nav>
         </div>
       )}

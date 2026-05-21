@@ -1,0 +1,28 @@
+{
+  "goal": "公開ヘッダー改善（イベント一覧追加・レイアウト調整）& 管理画面にイベント公開ページ遷移ボタン追加",
+  "created": "2026-05-19T22:40:00",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "PublicHeader: イベント一覧リンク追加 & レイアウトを左右端寄せに変更",
+      "description": "src/app/(public)/PublicHeader.tsx を修正する。\n\n1. NAV_ITEMS の先頭に { href: \"/events/public\", label: \"イベント一覧\" } を追加\n2. コンテナの max-w-6xl を削除し、px-6 lg:px-12 等で左右の余白を調整して SeminarAI ロゴを左端、ナビ+無料相談ボタンを右端に寄せる\n3. nav と無料相談ボタンをまとめて右寄せにする（ml-auto + flex + gap で配置）\n4. モバイルメニュー（open時のドロップダウン）にもイベント一覧を追加\n5. モバイルメニューのコンテナからも max-w-6xl を削除して幅を合わせる",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "対象ファイル: src/app/(public)/PublicHeader.tsx。現在 max-w-6xl で中央寄せ、nav は justify-between の中央配置。NAV_ITEMS に事例一覧・ブログ・お役立ち資料・運営者情報の4つがある。"
+    },
+    {
+      "id": 2,
+      "title": "管理画面イベント詳細に「公開ページを見る」ボタン追加",
+      "description": "src/app/(dashboard)/events/[id]/page.tsx を修正する。\n\n1. イベント詳細ページの編集ボタン付近に「公開ページを見る」リンクボタンを追加\n2. リンク先: /events/public/{event.id}\n3. target=\"_blank\" で新規タブで開く\n4. ExternalLink アイコン（既にimport済み）を使用\n5. 編集ボタンと同じ行に並べる",
+      "type": "general",
+      "agent": "claude",
+      "depends_on": [],
+      "size": "S",
+      "status": "pending",
+      "context_summary": "対象ファイル: src/app/(dashboard)/events/[id]/page.tsx。ExternalLink は既にインポート済み。event オブジェクトに id がある。"
+    }
+  ]
+}
