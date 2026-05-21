@@ -1,85 +1,126 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "利用規約 | ひとり社長サロン",
+  title: "特定商取引法に基づく表記 | ひとり社長サロン",
 };
 
-export default function TermsPage() {
+export default function LegalPage() {
   return (
     <div className="py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          利用規約
+          特定商取引法に基づく表記
         </h1>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 prose prose-sm prose-gray max-w-none">
-          <p>
-            本利用規約（以下「本規約」）は、ひとり社長サロン（以下「当方」）が提供するClaude Code伴走支援サービスおよび関連サービス（以下「本サービス」）の利用に関する条件を定めるものです。
-            ユーザーは、本規約に同意の上、本サービスをご利用ください。
-          </p>
-
-          <h2>第1条（適用）</h2>
-          <p>
-            本規約は、本サービスの利用に関するすべてのユーザーに適用されます。
-          </p>
-
-          <h2>第2条（利用申込み）</h2>
-          <p>
-            ユーザーは、当方所定の方法により利用を申込み、当方がこれを承諾した時点で、本サービスの利用契約が成立するものとします。
-            ユーザーは、申込みに際して正確かつ最新の情報を提供するものとします。
-          </p>
-
-          <h2>第3条（サービス内容）</h2>
-          <p>
-            本サービスは、Claude Codeの活用に関する伴走支援、コンサルティング、コーチング、関連する教育コンテンツの提供等を内容とします。
-            本サービスは、ユーザーの業務改善や成果を保証するものではありません。
-          </p>
-
-          <h2>第4条（利用料金）</h2>
-          <p>
-            ユーザーは、本サービスの利用にあたって、当方が別途定める利用料金を、当方が指定する方法により支払うものとします。
-            具体的な料金・支払方法は、サービスごとに個別に定めるものとします。
-          </p>
-
-          <h2>第5条（禁止事項）</h2>
-          <p>ユーザーは、以下の行為を行ってはなりません。</p>
-          <ul>
-            <li>法令または公序良俗に反する行為</li>
-            <li>本サービスの運営を妨害する行為</li>
-            <li>他のユーザーまたは第三者の権利を侵害する行為</li>
-            <li>虚偽の情報を登録・提供する行為</li>
-            <li>本サービスを通じて得られた情報・コンテンツを、当方の事前の書面による承諾なく、第三者に開示・提供・販売・配布する行為</li>
-            <li>本サービスを不正に利用する行為</li>
-          </ul>
-
-          <h2>第6条（サービスの変更・停止）</h2>
-          <p>
-            当方は、事前の通知なくサービス内容の変更・追加・停止を行うことがあります。
-            これによりユーザーに生じた損害について、当方は責任を負いません。
-          </p>
-
-          <h2>第7条（免責事項）</h2>
-          <p>
-            当方は、本サービスの完全性、正確性、有用性、特定の目的への適合性等について保証するものではありません。
-            本サービスの利用によりユーザーに生じた損害について、故意または重過失による場合を除き、責任を負いません。
-          </p>
-
-          <h2>第8条（知的財産権）</h2>
-          <p>
-            本サービスに関する資料、教材、コンテンツ等の知的財産権は、当方または正当な権利者に帰属します。
-            ユーザーは、本サービスのコンテンツを無断で複製・転載・改変・二次配布することはできません。
-          </p>
-
-          <h2>第9条（規約の変更）</h2>
-          <p>
-            当方は、必要と判断した場合には本規約を変更することがあります。
-            変更後の規約は、本ページに掲載した時点から効力を生じるものとします。
-          </p>
-
-          <h2>第10条（準拠法・管轄裁判所）</h2>
-          <p>
-            本規約は日本法に準拠し、本規約に関する紛争については、当方の所在地を管轄する裁判所を第一審の専属的合意管轄裁判所とします。
-          </p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-100">
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top w-1/3">
+                  販売事業者名
+                </th>
+                <td className="py-4 text-gray-600">
+                  ひとり社長サロン
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  運営責任者
+                </th>
+                <td className="py-4 text-gray-600">
+                  清水 勝紀
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  所在地
+                </th>
+                <td className="py-4 text-gray-600">
+                  〒125-0054<br />
+                  東京都葛飾区高砂３丁目１−２０
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  電話番号
+                </th>
+                <td className="py-4 text-gray-600">
+                  080-9383-2899<br />
+                  <span className="text-xs text-gray-500">
+                    (受付時間:平日 10:00〜18:00 / 土日祝休み)
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  メールアドレス
+                </th>
+                <td className="py-4 text-gray-600">
+                  info@hitori-shacho-salon.com
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  販売価格
+                </th>
+                <td className="py-4 text-gray-600">
+                  <ul className="space-y-1 list-disc pl-5">
+                    <li>セミナー・イベント:無料 〜 10,000円程度(各イベントページに記載)</li>
+                    <li>Claude Code 伴走支援プログラム:398,000円(税込)</li>
+                    <li>受託開発・企業向けセミナー等:お見積もり</li>
+                  </ul>
+                  <span className="block mt-3 text-xs text-gray-500">
+                    ※価格は予告なく改定される場合があります。最新の価格は各サービスページをご確認ください。
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  商品代金以外の必要料金
+                </th>
+                <td className="py-4 text-gray-600">
+                  インターネット接続に必要な通信費、Claude等の外部サービス利用料は、お客様のご負担となります
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  支払方法
+                </th>
+                <td className="py-4 text-gray-600">
+                  銀行振込、クレジットカード決済<br />
+                  <span className="text-xs text-gray-500">
+                    (利用可能な決済方法は、サービスにより異なります)
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  支払時期
+                </th>
+                <td className="py-4 text-gray-600">
+                  銀行振込:請求書発行後7日以内<br />
+                  クレジットカード決済:申込時
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  サービス提供時期
+                </th>
+                <td className="py-4 text-gray-600">
+                  入金確認後、当方とお客様との間で合意した日程よりサービスを開始します
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  返品・キャンセルについて
+                </th>
+                <td className="py-4 text-gray-600">
+                  本サービスは役務提供のため、原則として申込み後のキャンセル・返金はお受けできません。
+                  ただし、当方の責に帰すべき事由によりサービス提供が困難となった場合は、未提供分について返金対応をいたします。
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
