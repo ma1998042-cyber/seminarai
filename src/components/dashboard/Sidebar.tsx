@@ -19,6 +19,7 @@ import {
   PenSquare,
   Briefcase,
   BookOpen,
+  Package,
 } from "lucide-react";
 import { cn, getInitials, PLAN_COLORS } from "@/lib/utils";
 
@@ -38,6 +39,7 @@ const navItems = [
   { href: "/blog", icon: PenSquare, label: "ブログ" },
   { href: "/cases", icon: Briefcase, label: "事例管理" },
   { href: "/resources", icon: BookOpen, label: "資料管理" },
+  { href: "/services", icon: Package, label: "サービス管理" },
 ];
 
 const settingsItems = [

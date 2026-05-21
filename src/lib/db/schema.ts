@@ -636,6 +636,65 @@ export const resourceDownloadLeads = sqliteTable("resource_download_leads", {
 ]);
 
 // =============================================
+// SERVICES (サービス一覧)
+// =============================================
+export const services = sqliteTable("services", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  inquiryUrl: text("inquiry_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_services_org").on(table.organizationId),
+]);
+
+// =============================================
+// WORKSHOP_CONTENTS (ワークショップコンテンツ)
+// =============================================
+export const workshopContents = sqliteTable("workshop_contents", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  contentType: text("content_type").notNull().default("manual"),
+  fileUrl: text("file_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isPublished: integer("is_published").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_workshop_contents_org").on(table.organizationId),
+  index("idx_workshop_contents_event").on(table.eventId),
+]);
+
+// =============================================
+// CONTENT_ACCESS_TOKENS (コンテンツアクセストークン)
+// =============================================
+export const contentAccessTokens = sqliteTable("content_access_tokens", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workshopContentId: text("workshop_content_id").references(() => workshopContents.id, { onDelete: "cascade" }),
+  eventId: text("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  surveyResponseId: text("survey_response_id").notNull().references(() => surveyResponses.id, { onDelete: "cascade" }),
+  customerId: text("customer_id").references(() => customers.id, { onDelete: "set null" }),
+  token: text("token").notNull().unique().$defaultFn(() => {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  }),
+  accessedAt: text("accessed_at"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_content_access_tokens_event").on(table.eventId),
+  index("idx_content_access_tokens_token").on(table.token),
+]);
+
+// =============================================
 // ADMIN_USERS (SaaS管理者)
 // =============================================
 export const adminUsers = sqliteTable("admin_users", {
@@ -671,6 +730,8 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   blogCategories: many(blogCategories),
   caseStudies: many(caseStudies),
   resources: many(resources),
+  services: many(services),
+  workshopContents: many(workshopContents),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -690,6 +751,8 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   organization: one(organizations, { fields: [events.organizationId], references: [organizations.id] }),
   registrations: many(eventRegistrations),
   surveys: many(surveys),
+  workshopContents: many(workshopContents),
+  contentAccessTokens: many(contentAccessTokens),
 }));
 
 export const customerStatusesRelations = relations(customerStatuses, ({ one, many }) => ({
@@ -823,4 +886,21 @@ export const resourcesRelations = relations(resources, ({ one, many }) => ({
 
 export const resourceDownloadLeadsRelations = relations(resourceDownloadLeads, ({ one }) => ({
   resource: one(resources, { fields: [resourceDownloadLeads.resourceId], references: [resources.id] }),
+}));
+
+export const servicesRelations = relations(services, ({ one }) => ({
+  organization: one(organizations, { fields: [services.organizationId], references: [organizations.id] }),
+}));
+
+export const workshopContentsRelations = relations(workshopContents, ({ one, many }) => ({
+  organization: one(organizations, { fields: [workshopContents.organizationId], references: [organizations.id] }),
+  event: one(events, { fields: [workshopContents.eventId], references: [events.id] }),
+  accessTokens: many(contentAccessTokens),
+}));
+
+export const contentAccessTokensRelations = relations(contentAccessTokens, ({ one }) => ({
+  workshopContent: one(workshopContents, { fields: [contentAccessTokens.workshopContentId], references: [workshopContents.id] }),
+  event: one(events, { fields: [contentAccessTokens.eventId], references: [events.id] }),
+  surveyResponse: one(surveyResponses, { fields: [contentAccessTokens.surveyResponseId], references: [surveyResponses.id] }),
+  customer: one(customers, { fields: [contentAccessTokens.customerId], references: [customers.id] }),
 }));
