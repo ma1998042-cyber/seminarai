@@ -10,6 +10,7 @@ export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOpt
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Tokyo',
     ...options,
   }).format(new Date(date))
 }
@@ -21,6 +22,7 @@ export function formatDateTime(date: string | Date) {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
   }).format(new Date(date))
 }
 

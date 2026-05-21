@@ -3,6 +3,7 @@ import { getDbFromContext } from "@/lib/db";
 import { emailCampaigns } from "@/lib/db/schema";
 import { eq, and, lte } from "drizzle-orm";
 import { sendCampaignEmails } from "@/lib/email/send-campaign";
+import { nowUtc } from "@/lib/datetime";
 
 export async function GET(request: NextRequest) {
   // 認証: CRON_SECRET で照合
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   const db = getDbFromContext();
-  const now = new Date().toISOString();
+  const now = nowUtc();
 
   try {
     // status='scheduled' かつ scheduledAt <= now のキャンペーンを取得

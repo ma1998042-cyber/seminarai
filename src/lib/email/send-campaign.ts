@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/schema";
 import { sendEmail } from "@/lib/email";
 import { addTrackingPixel, rewriteLinks } from "@/lib/email/tracking";
+import { nowUtc } from "@/lib/datetime";
 
 type Database = any;
 
@@ -55,7 +56,7 @@ export async function sendCampaignEmails(
   // ステータスを sending に更新
   await db
     .update(emailCampaigns)
-    .set({ status: "sending", updatedAt: new Date().toISOString() })
+    .set({ status: "sending", updatedAt: nowUtc() })
     .where(eq(emailCampaigns.id, campaignId));
 
   // ターゲット解決
@@ -69,7 +70,7 @@ export async function sendCampaignEmails(
   );
 
   if (recipients.length === 0) {
-    const now = new Date().toISOString();
+    const now = nowUtc();
     await db
       .update(emailCampaigns)
       .set({ status: "sent", sentAt: now, totalRecipients: 0, sentCount: 0, updatedAt: now })
@@ -129,7 +130,7 @@ export async function sendCampaignEmails(
 
       await db
         .update(emailSends)
-        .set({ status: "sent", sentAt: new Date().toISOString() })
+        .set({ status: "sent", sentAt: nowUtc() })
         .where(eq(emailSends.id, sendId));
       sentCount++;
     } catch (err) {
@@ -150,7 +151,7 @@ export async function sendCampaignEmails(
     }
   }
 
-  const now = new Date().toISOString();
+  const now = nowUtc();
   const totalSent = sentCount + alreadySentEmails.size;
 
   if (failedCount > 0 && sentCount < pendingRecipients.length) {

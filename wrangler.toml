@@ -1,5 +1,5 @@
 name = "seminar-crm"
-main = ".open-next/worker.js"
+main = "worker-entry.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 minify = true
@@ -17,3 +17,7 @@ migrations_dir = "drizzle/migrations"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "seminar-crm-uploads"
+
+# Cron Triggers: 毎分実行で予約配信・リマインド・ステップ配信を処理
+[triggers]
+crons = ["* * * * *"]

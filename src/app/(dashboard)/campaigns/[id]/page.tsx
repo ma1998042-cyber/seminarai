@@ -21,6 +21,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn, formatDate, formatDateTime, SURVEY_CATEGORY_LABELS } from "@/lib/utils";
+import { utcToJstLocal } from "@/lib/datetime";
 import { VariableInsertButton } from "@/components/campaigns/VariableInsertButton";
 import {
   getCampaignDetail,
@@ -122,7 +123,7 @@ export default function CampaignDetailPage() {
         target_type: campaignData.targetType,
         target_tag_ids: campaignData.targetTagIds ?? [],
         target_survey_id: campaignData.targetSurveyId ?? "",
-        scheduled_at: campaignData.scheduledAt ?? "",
+        scheduled_at: campaignData.scheduledAt ? utcToJstLocal(campaignData.scheduledAt) : "",
       });
     } catch {
       setFetchError(true);
@@ -207,7 +208,7 @@ export default function CampaignDetailPage() {
         target_type: updated.targetType,
         target_tag_ids: updated.targetTagIds ?? [],
         target_survey_id: updated.targetSurveyId ?? "",
-        scheduled_at: updated.scheduledAt ?? "",
+        scheduled_at: updated.scheduledAt ? utcToJstLocal(updated.scheduledAt) : "",
       });
     }
     setActionLoading(false);

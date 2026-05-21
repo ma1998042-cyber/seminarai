@@ -13,6 +13,7 @@ import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 import { addTrackingPixel, rewriteLinks } from '@/lib/email/tracking'
 import { replacePlaceholders } from '@/lib/email/send-campaign'
+import { jstToUtc, nowUtc } from '@/lib/datetime'
 
 async function getSessionAndOrg() {
   const auth = getAuth()
@@ -142,7 +143,7 @@ export async function updateCampaignAction(
     targetType: form.target_type,
     targetTagIds: form.target_tag_ids.length > 0 ? form.target_tag_ids : null,
     targetSurveyId: form.target_survey_id || null,
-    scheduledAt: form.action === 'schedule' ? form.scheduled_at : null,
+    scheduledAt: form.action === 'schedule' ? jstToUtc(form.scheduled_at) : null,
     status,
   })
 
@@ -191,7 +192,7 @@ export async function updateCampaignAction(
           // 成功 → sent に更新
           await ctx.db
             .update(emailSends)
-            .set({ status: 'sent', sentAt: new Date().toISOString() })
+            .set({ status: 'sent', sentAt: nowUtc() })
             .where(eq(emailSends.id, sendId))
           sentCount++
         } catch {
@@ -213,7 +214,7 @@ export async function updateCampaignAction(
 
       await updateCampaignQuery(ctx.db, ctx.orgId, id, {
         status: 'sent',
-        sentAt: new Date().toISOString(),
+        sentAt: nowUtc(),
         totalRecipients: emails.length,
         sentCount,
       })

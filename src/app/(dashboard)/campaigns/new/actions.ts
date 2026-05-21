@@ -11,6 +11,7 @@ import { customerTags, customers, emailTemplates, surveyResponses, surveys } fro
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { sendCampaignEmails } from '@/lib/email/send-campaign'
+import { jstToUtc } from '@/lib/datetime'
 
 export async function getTagsForOrg(): Promise<{ id: string; name: string; color: string }[]> {
   const auth = getAuth()
@@ -60,7 +61,7 @@ export async function createCampaignAction(form: {
     targetSurveyId: form.target_survey_id || null,
     targetCustomerIds: form.target_customer_ids.length > 0 ? form.target_customer_ids : null,
     status: form.status,
-    scheduledAt: form.scheduled_at || undefined,
+    scheduledAt: form.scheduled_at ? jstToUtc(form.scheduled_at) : undefined,
     createdBy: user.id,
   })
 
