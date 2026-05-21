@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/events/public", label: "イベント一覧" },
+  { href: "/services", label: "サービス一覧" },
   { href: "/case-studies", label: "事例一覧" },
   { href: "/articles", label: "ブログ" },
   { href: "/materials", label: "お役立ち資料" },

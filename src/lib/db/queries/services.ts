@@ -22,6 +22,13 @@ export async function getPublishedServices(db: Database, orgId: string) {
   });
 }
 
+export async function getAllPublishedServices(db: Database) {
+  return db.query.services.findMany({
+    where: eq(services.isPublished, true),
+    orderBy: [asc(services.sortOrder)],
+  });
+}
+
 export async function createService(
   db: Database,
   data: typeof services.$inferInsert,
