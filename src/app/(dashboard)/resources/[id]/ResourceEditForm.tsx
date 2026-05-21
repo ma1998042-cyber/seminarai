@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Upload, Loader2, Eye, EyeOff, FileDown, X } from "lucide-react";
+import { ArrowLeft, Trash2, Upload, Loader2, Eye, EyeOff, FileDown, X, Download, Ban } from "lucide-react";
 import { updateResourceAction, deleteResourceAction } from "../actions";
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
     fileUrl: string;
     sortOrder: number;
     isPublished: boolean;
+    allowDownload: boolean;
   };
 }
 
@@ -26,6 +27,7 @@ export default function ResourceEditForm({ resource }: Props) {
   const [sortOrder, setSortOrder] = useState(resource.sortOrder);
   const [fileUrl, setFileUrl] = useState(resource.fileUrl);
   const [isPublished, setIsPublished] = useState(resource.isPublished);
+  const [allowDownload, setAllowDownload] = useState(resource.allowDownload);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -81,6 +83,7 @@ export default function ResourceEditForm({ resource }: Props) {
       fileUrl,
       sortOrder,
       isPublished,
+      allowDownload,
     });
     setSaving(false);
     if (result.error) {
@@ -218,20 +221,37 @@ export default function ResourceEditForm({ resource }: Props) {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">公開状態:</label>
-          <button
-            type="button"
-            onClick={() => setIsPublished(!isPublished)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              isPublished
-                ? "bg-green-100 text-green-700 hover:bg-green-200"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            {isPublished ? "公開中" : "非公開"}
-          </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">公開状態:</label>
+            <button
+              type="button"
+              onClick={() => setIsPublished(!isPublished)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                isPublished
+                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              {isPublished ? "公開中" : "非公開"}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">ダウンロード:</label>
+            <button
+              type="button"
+              onClick={() => setAllowDownload(!allowDownload)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                allowDownload
+                  ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+              }`}
+            >
+              {allowDownload ? <Download className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+              {allowDownload ? "ダウンロード可" : "準備中"}
+            </button>
+          </div>
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import ResourceDownloadCard from "./ResourceDownloadCard";
 
 export const metadata: Metadata = {
-  title: "お役立ち資料 | SeminarAI",
+  title: "お役立ち資料 | ひとり社長サロン",
   description: "セミナー運営に役立つ資料をご紹介します",
 };
 
@@ -37,6 +37,7 @@ export default async function PublicResourcesPage() {
                   description: item.description || "",
                   imageUrl: item.imageUrl || "",
                   hasFile: !!item.fileUrl,
+                  allowDownload: item.allowDownload,
                 }}
               />
             ))}

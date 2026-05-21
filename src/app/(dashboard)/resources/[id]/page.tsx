@@ -35,6 +35,7 @@ export default async function ResourceEditPage({
         fileUrl: resource.fileUrl || "",
         sortOrder: resource.sortOrder,
         isPublished: resource.isPublished,
+        allowDownload: resource.allowDownload,
       }}
     />
   );

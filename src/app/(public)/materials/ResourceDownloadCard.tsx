@@ -10,6 +10,7 @@ interface Props {
     description: string;
     imageUrl: string;
     hasFile: boolean;
+    allowDownload: boolean;
   };
 }
 
@@ -106,7 +107,7 @@ export default function ResourceDownloadCard({ resource }: Props) {
             </p>
           )}
           <div className="mt-auto">
-            {resource.hasFile ? (
+            {resource.allowDownload && resource.hasFile ? (
               <button
                 onClick={() => setShowModal(true)}
                 className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
@@ -115,7 +116,7 @@ export default function ResourceDownloadCard({ resource }: Props) {
                 資料をダウンロード
               </button>
             ) : (
-              <span className="block text-center text-sm text-gray-400">
+              <span className="inline-flex items-center justify-center w-full gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-600 border border-amber-200">
                 準備中
               </span>
             )}

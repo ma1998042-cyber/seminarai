@@ -62,6 +62,7 @@ export async function updateResourceAction(
     fileUrl?: string
     sortOrder?: number
     isPublished?: boolean
+    allowDownload?: boolean
   }
 ): Promise<{ success?: boolean; error?: string }> {
   const ctx = await getOrgContext()
@@ -74,6 +75,7 @@ export async function updateResourceAction(
     ...(form.fileUrl !== undefined && { fileUrl: form.fileUrl || null }),
     ...(form.sortOrder !== undefined && { sortOrder: form.sortOrder }),
     ...(form.isPublished !== undefined && { isPublished: form.isPublished }),
+    ...(form.allowDownload !== undefined && { allowDownload: form.allowDownload }),
   })
 
   if (!row) return { error: '資料が見つかりません' }

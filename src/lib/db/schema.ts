@@ -477,6 +477,7 @@ export const banners = sqliteTable("banners", {
   organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   imageUrl: text("image_url").notNull(),
+  mobileImageUrl: text("mobile_image_url"),
   linkUrl: text("link_url").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
@@ -610,6 +611,7 @@ export const resources = sqliteTable("resources", {
   fileUrl: text("file_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
+  allowDownload: integer("allow_download", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 }, (table) => [
