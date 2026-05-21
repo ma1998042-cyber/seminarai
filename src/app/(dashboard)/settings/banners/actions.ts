@@ -35,6 +35,7 @@ export async function getBannersData() {
       id: b.id,
       title: b.title,
       imageUrl: b.imageUrl,
+      mobileImageUrl: b.mobileImageUrl,
       linkUrl: b.linkUrl,
       sortOrder: b.sortOrder,
       isActive: b.isActive,
@@ -45,6 +46,7 @@ export async function getBannersData() {
 export async function addBanner(data: {
   title: string;
   imageUrl: string;
+  mobileImageUrl?: string | null;
   linkUrl: string;
 }) {
   const result = await getSessionAndOrg();
@@ -55,6 +57,7 @@ export async function addBanner(data: {
       organizationId: result.orgId,
       title: data.title,
       imageUrl: data.imageUrl,
+      mobileImageUrl: data.mobileImageUrl,
       linkUrl: data.linkUrl,
     });
     revalidatePath("/settings/banners");
@@ -81,7 +84,7 @@ export async function toggleBanner(bannerId: string, isActive: boolean) {
 
 export async function editBanner(
   bannerId: string,
-  data: { title?: string; linkUrl?: string; imageUrl?: string }
+  data: { title?: string; linkUrl?: string; imageUrl?: string; mobileImageUrl?: string | null }
 ) {
   const result = await getSessionAndOrg();
   if ("error" in result) return { error: result.error };

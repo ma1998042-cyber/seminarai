@@ -31,6 +31,7 @@ export async function createBanner(
     organizationId: string;
     title: string;
     imageUrl: string;
+    mobileImageUrl?: string | null;
     linkUrl: string;
     sortOrder?: number;
     isActive?: boolean;
@@ -47,6 +48,7 @@ export async function updateBanner(
   data: Partial<{
     title: string;
     imageUrl: string;
+    mobileImageUrl: string | null;
     linkUrl: string;
     sortOrder: number;
     isActive: boolean;

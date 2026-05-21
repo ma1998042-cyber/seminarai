@@ -24,7 +24,7 @@ export default async function PublicEventsPage({
   const banners = allBanners.slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 pb-32 lg:pb-12">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 pb-20 lg:pb-12">
       <div className="max-w-6xl mx-auto">
         {/* ヘッダー */}
         <div className="text-center mb-10">
@@ -206,24 +206,22 @@ export default async function PublicEventsPage({
 
         {/* モバイル用固定バナー（画面下部） */}
         {banners.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3">
-            <div className="flex gap-3 justify-center max-w-md mx-auto">
-              {banners.map((banner) => (
-                <a
-                  key={banner.id}
-                  href={banner.linkUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block flex-1 rounded-lg overflow-hidden border border-gray-100 shadow-sm"
-                >
-                  <img
-                    src={banner.imageUrl}
-                    alt={banner.title}
-                    className="w-full h-auto object-cover"
-                  />
-                </a>
-              ))}
-            </div>
+          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex bg-gray-900">
+            {banners.map((banner) => (
+              <a
+                key={banner.id}
+                href={banner.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`block overflow-hidden ${banners.length === 1 ? "w-full" : "w-1/2"}`}
+              >
+                <img
+                  src={banner.mobileImageUrl || banner.imageUrl}
+                  alt={banner.title}
+                  className="w-full h-14 object-cover object-center block"
+                />
+              </a>
+            ))}
           </div>
         )}
       </div>
