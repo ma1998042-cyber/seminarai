@@ -34,7 +34,7 @@ export default function PublicLayout({
               特定商取引法に基づく表記
             </Link>
           </nav>
-          <p>&copy; 2026 SeminarAI</p>
+          <p>&copy; 2026 ひとり社長サロン</p>
         </div>
       </footer>
     </div>

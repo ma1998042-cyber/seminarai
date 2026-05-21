@@ -22,7 +22,7 @@ export default function PublicHeader() {
           href="/events/public"
           className="text-lg font-bold tracking-tight text-gray-900"
         >
-          SeminarAI
+          ひとり社長サロン
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">

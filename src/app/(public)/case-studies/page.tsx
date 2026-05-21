@@ -4,8 +4,8 @@ import { getPublishedCaseStudies } from "@/lib/db/queries/caseStudies";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "事例一覧 | SeminarAI",
-  description: "SeminarAIの導入事例をご紹介します",
+  title: "事例一覧 | ひとり社長サロン",
+  description: "ひとり社長サロンの導入事例をご紹介します",
 };
 
 export default async function PublicCasesPage() {
