@@ -39,10 +39,18 @@ export default function CalendarSettingsPage() {
   const handleConnectGoogle = async () => {
     // better-authのlinkSocialを使ってGoogleアカウントを連携する
     // ログイン済みユーザーに対してソーシャルアカウントをリンクする
-    await authClient.linkSocial({
-      provider: "google",
-      callbackURL: "/settings/calendar",
-    });
+    setError("");
+    try {
+      const result = await authClient.linkSocial({
+        provider: "google",
+        callbackURL: "/settings/calendar",
+      });
+      if (result.error) {
+        setError(`Google連携エラー: ${result.error.message || JSON.stringify(result.error)}`);
+      }
+    } catch (e) {
+      setError(`Google連携エラー: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const handleDisconnect = async () => {
