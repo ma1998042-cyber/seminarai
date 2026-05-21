@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, Users, ClipboardList, Edit, ExternalLink, MapPin, Globe } from "lucide-react";
+import { ArrowLeft, Users, ClipboardList, Edit, ExternalLink, MapPin, Globe, BookOpen } from "lucide-react";
 import { formatDateTime, EVENT_TYPE_LABELS, EVENT_STATUS_LABELS, EVENT_VISIBILITY_LABELS, SURVEY_CATEGORY_LABELS, cn } from "@/lib/utils";
 import { getAuth } from "@/lib/auth";
 import { getDbFromContext } from "@/lib/db";
@@ -86,7 +86,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={`/e/${event.id}`}
+            href={`/events/public/${event.id}`}
             target="_blank"
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
@@ -232,6 +232,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             >
               <ClipboardList className="w-4 h-4 text-gray-400" />
               アンケートを作成する
+            </Link>
+            <Link
+              href={`/events/${event.id}/contents`}
+              className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-600"
+            >
+              <BookOpen className="w-4 h-4 text-gray-400" />
+              コンテンツを管理する
             </Link>
             <Link
               href={`/events/${event.id}/participants`}
