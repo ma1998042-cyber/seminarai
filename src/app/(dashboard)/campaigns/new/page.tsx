@@ -34,7 +34,7 @@ export default function NewCampaignPage() {
     subject: "",
     preview_text: "",
     body_html: "",
-    format: "html" as "html" | "text",
+    format: "text" as "html" | "text",
     target_type: "all",
     target_tag_ids: [] as string[],
     target_survey_id: "",

@@ -11,7 +11,6 @@ const MAX_IMAGES = 3;
 
 const eventTypes = [
   { value: "seminar", label: "セミナー" },
-  { value: "webinar", label: "ウェビナー" },
   { value: "workshop", label: "ワークショップ" },
   { value: "course", label: "講座" },
   { value: "other", label: "その他" },

@@ -80,7 +80,6 @@ export const PLAN_COLORS: Record<string, string> = {
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   seminar: 'セミナー',
-  webinar: 'ウェビナー',
   workshop: 'ワークショップ',
   course: '講座',
   other: 'その他',

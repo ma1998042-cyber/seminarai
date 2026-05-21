@@ -7,7 +7,6 @@ import { Search } from "lucide-react";
 const EVENT_TYPES = [
   { value: "", label: "すべての種類" },
   { value: "seminar", label: "セミナー" },
-  { value: "webinar", label: "ウェビナー" },
   { value: "workshop", label: "ワークショップ" },
   { value: "course", label: "講座" },
   { value: "other", label: "その他" },
