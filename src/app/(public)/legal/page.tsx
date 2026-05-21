@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "特定商取引法に基づく表記 | SeminarAI",
+  title: "特定商取引法に基づく表記 | ひとり社長サロン",
 };
 
 export default function LegalPage() {
@@ -20,15 +20,15 @@ export default function LegalPage() {
                   販売事業者名
                 </th>
                 <td className="py-4 text-gray-600">
-                  （事業者名を記載してください）
+                  ひとり社長サロン
                 </td>
               </tr>
               <tr>
                 <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
-                  代表者名
+                  運営責任者
                 </th>
                 <td className="py-4 text-gray-600">
-                  （代表者名を記載してください）
+                  清水 勝紀
                 </td>
               </tr>
               <tr>
@@ -36,15 +36,27 @@ export default function LegalPage() {
                   所在地
                 </th>
                 <td className="py-4 text-gray-600">
-                  （所在地を記載してください）
+                  〒125-0054<br />
+                  東京都葛飾区高砂３丁目１−２０
                 </td>
               </tr>
               <tr>
                 <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
-                  連絡先
+                  電話番号
                 </th>
                 <td className="py-4 text-gray-600">
-                  （メールアドレス・電話番号を記載してください）
+                  080-9383-2899<br />
+                  <span className="text-xs text-gray-500">
+                    （受付時間：平日 10:00〜18:00 / 土日祝休み）
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
+                  メールアドレス
+                </th>
+                <td className="py-4 text-gray-600">
+                  katsunori.shimizu@sk-techlab.com
                 </td>
               </tr>
               <tr>
@@ -52,7 +64,10 @@ export default function LegalPage() {
                   販売価格
                 </th>
                 <td className="py-4 text-gray-600">
-                  各サービス・イベントページをご参照ください
+                  各サービスページに記載の金額（消費税込）<br />
+                  <span className="text-xs text-gray-500">
+                    ※個別契約による伴走支援は、お見積もり時に提示する金額となります
+                  </span>
                 </td>
               </tr>
               <tr>
@@ -60,7 +75,7 @@ export default function LegalPage() {
                   商品代金以外の必要料金
                 </th>
                 <td className="py-4 text-gray-600">
-                  なし（インターネット接続にかかる通信費はお客様のご負担となります）
+                  インターネット接続に必要な通信費、Claude等の外部サービス利用料は、お客様のご負担となります
                 </td>
               </tr>
               <tr>
@@ -68,7 +83,10 @@ export default function LegalPage() {
                   支払方法
                 </th>
                 <td className="py-4 text-gray-600">
-                  クレジットカード決済
+                  銀行振込、クレジットカード決済<br />
+                  <span className="text-xs text-gray-500">
+                    （利用可能な決済方法は、サービスにより異なります）
+                  </span>
                 </td>
               </tr>
               <tr>
@@ -76,15 +94,16 @@ export default function LegalPage() {
                   支払時期
                 </th>
                 <td className="py-4 text-gray-600">
-                  サービス申込時またはイベント申込時
+                  銀行振込：請求書発行後7日以内<br />
+                  クレジットカード決済：申込時
                 </td>
               </tr>
               <tr>
                 <th className="py-4 pr-4 text-left font-medium text-gray-700 align-top">
-                  商品の引渡時期
+                  サービス提供時期
                 </th>
                 <td className="py-4 text-gray-600">
-                  お支払い完了後、直ちにサービスをご利用いただけます
+                  入金確認後、当方とお客様との間で合意した日程よりサービスを開始します
                 </td>
               </tr>
               <tr>
@@ -92,8 +111,8 @@ export default function LegalPage() {
                   返品・キャンセルについて
                 </th>
                 <td className="py-4 text-gray-600">
-                  デジタルコンテンツの性質上、お支払い後の返品・返金はお受けしておりません。
-                  イベントのキャンセルについては、各イベントページの記載に従います。
+                  本サービスは役務提供のため、原則として申込み後のキャンセル・返金はお受けできません。
+                  ただし、当方の責に帰すべき事由によりサービス提供が困難となった場合は、未提供分について返金対応をいたします。
                 </td>
               </tr>
             </tbody>
