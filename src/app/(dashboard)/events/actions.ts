@@ -121,6 +121,7 @@ export async function duplicateEventAction(eventId: string): Promise<{ eventId?:
       title: `${newEvent.title} - 申し込みアンケート`,
       category: 'pre_event',
       status: 'draft',
+      completionEmailEnabled: true,
       createdBy: user.id,
     }),
     createSurvey(db, {
@@ -129,6 +130,7 @@ export async function duplicateEventAction(eventId: string): Promise<{ eventId?:
       title: `${newEvent.title} - 終了後アンケート`,
       category: 'post_event',
       status: 'draft',
+      completionEmailEnabled: true,
       createdBy: user.id,
     }),
   ])
@@ -138,7 +140,9 @@ export async function duplicateEventAction(eventId: string): Promise<{ eventId?:
 }
 
 export async function getAvailableDatesAction(): Promise<{
-  dates?: { date: string; status: 'both_free' | 'one_free' | 'both_busy' }[];
+  dates?: { date: string; status: 'both_free' | 'one_free' | 'both_busy'; busySlots: Array<{ start: string; end: string; calendar: 'primary' | 'secondary' }> }[];
+  primaryName?: string;
+  secondaryName?: string;
   error?: string;
 }> {
   const auth = getAuth()
@@ -156,6 +160,8 @@ export async function getAvailableDatesAction(): Promise<{
 
   const settings = (org.settings || {}) as Record<string, unknown>
   const secondaryCalendarId = settings.secondaryCalendarId as string | undefined
+  const primaryName = (settings.primaryCalendarName as string) || ''
+  const secondaryName = (settings.secondaryCalendarName as string) || ''
 
   // Googleトークンの取得
   const { env } = getCloudflareContext()
@@ -191,7 +197,7 @@ export async function getAvailableDatesAction(): Promise<{
     )
 
     // 日付ごとの空き状況を計算
-    const dates: { date: string; status: 'both_free' | 'one_free' | 'both_busy' }[] = []
+    const dates: { date: string; status: 'both_free' | 'one_free' | 'both_busy'; busySlots: Array<{ start: string; end: string; calendar: 'primary' | 'secondary' }> }[] = []
     const current = new Date(timeMin)
 
     while (current < timeMax) {
@@ -202,26 +208,33 @@ export async function getAvailableDatesAction(): Promise<{
 
       let primaryBusy = false
       let secondaryBusy = false
+      const busySlots: Array<{ start: string; end: string; calendar: 'primary' | 'secondary' }> = []
 
       // プライマリカレンダーの予定チェック
       const primaryCalendar = freeBusy.calendars['primary']
       if (primaryCalendar?.busy) {
-        primaryBusy = primaryCalendar.busy.some((slot) => {
+        for (const slot of primaryCalendar.busy) {
           const slotStart = new Date(slot.start)
           const slotEnd = new Date(slot.end)
-          return slotStart < dayEnd && slotEnd > dayStart
-        })
+          if (slotStart < dayEnd && slotEnd > dayStart) {
+            primaryBusy = true
+            busySlots.push({ start: slot.start, end: slot.end, calendar: 'primary' })
+          }
+        }
       }
 
       // セカンダリカレンダーの予定チェック
       if (secondaryCalendarId) {
         const secondaryCalendar = freeBusy.calendars[secondaryCalendarId]
         if (secondaryCalendar?.busy) {
-          secondaryBusy = secondaryCalendar.busy.some((slot) => {
+          for (const slot of secondaryCalendar.busy) {
             const slotStart = new Date(slot.start)
             const slotEnd = new Date(slot.end)
-            return slotStart < dayEnd && slotEnd > dayStart
-          })
+            if (slotStart < dayEnd && slotEnd > dayStart) {
+              secondaryBusy = true
+              busySlots.push({ start: slot.start, end: slot.end, calendar: 'secondary' })
+            }
+          }
         }
       }
 
@@ -235,11 +248,11 @@ export async function getAvailableDatesAction(): Promise<{
         status = secondaryCalendarId ? 'one_free' : (primaryBusy ? 'both_busy' : 'both_free')
       }
 
-      dates.push({ date: dateStr, status })
+      dates.push({ date: dateStr, status, busySlots })
       current.setDate(current.getDate() + 1)
     }
 
-    return { dates }
+    return { dates, primaryName, secondaryName }
   } catch (err) {
     console.error('FreeBusy API error:', err)
     return { error: 'カレンダーの空き情報の取得に失敗しました' }

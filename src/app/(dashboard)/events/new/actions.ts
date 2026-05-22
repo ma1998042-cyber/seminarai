@@ -72,6 +72,7 @@ export async function createEventAction(form: {
       title: `${form.title} - 申し込みアンケート`,
       category: 'pre_event',
       status: 'draft',
+      completionEmailEnabled: true,
       createdBy: user.id,
     }),
     createSurvey(db, {
@@ -80,6 +81,7 @@ export async function createEventAction(form: {
       title: `${form.title} - 終了後アンケート`,
       category: 'post_event',
       status: 'draft',
+      completionEmailEnabled: true,
       createdBy: user.id,
     }),
   ])
